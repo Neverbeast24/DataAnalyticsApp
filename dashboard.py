@@ -16,6 +16,13 @@ step = st.sidebar.selectbox("Choose a Step", ["Upload File", "Process Data", "Vi
 
 base_url = "http://127.0.0.1:5000"
 
+# Callback functions for mutual exclusivity
+def select_all_callback():
+    st.session_state["deselect_all"] = False
+
+def deselect_all_callback():
+    st.session_state["select_all"] = False
+
 if step == "Process Data":
     st.header("🛠️ Process Data")
     uploaded_file = st.file_uploader("Upload CSV File for Processing", type="csv")
@@ -23,25 +30,54 @@ if step == "Process Data":
         df = pd.read_csv(uploaded_file)
         st.write("📋 Uploaded Data", df.head())
 
-        selected_columns = st.multiselect("Select Columns to Clean", df.columns, default=df.columns.tolist())
+        st.markdown("### Select Columns to Clean")
+
+        # Checkboxes for selecting/deselecting all with callbacks
+        col1, col2 = st.columns(2)
+        with col1:
+            select_all = st.checkbox("Select All Columns", key="select_all", on_change=select_all_callback)
+        with col2:
+            deselect_all = st.checkbox("Deselect All Columns", key="deselect_all", on_change=deselect_all_callback)
+
+        # Individual column checkboxes in two columns
+        selected_columns = []
+        cols_per_row = st.columns(2)
+
+        for i, col in enumerate(df.columns):
+            with cols_per_row[i % 2]:
+                if select_all:
+                    checked = True
+                elif deselect_all:
+                    checked = False
+                else:
+                    checked = st.checkbox(f"Include '{col}'", key=f"checkbox_{col}")
+                if checked:
+                    selected_columns.append(col)
+
         if st.button("✨ Clean Data"):
-            df.replace([np.inf, -np.inf], 0, inplace=True)
-            df.fillna(0, inplace=True)
-
-            response = requests.post(
-                f"{base_url}/process",
-                json={"data": df.to_dict(orient="records"), "columns": selected_columns}
-            )
-            if response.status_code == 200:
-                cleaned_data = response.json()["cleaned_data"]
-                cleaned_columns = response.json()["columns"]
-                df_cleaned = pd.DataFrame(cleaned_data, columns=cleaned_columns)
-
-                st.success("Data cleaned successfully!")
-                st.write("🧹 Cleaned Data", df_cleaned.head())
-                st.download_button("⬇️ Download Cleaned Data", df_cleaned.to_csv(index=False), "cleaned_data.csv")
+            if not selected_columns:
+                st.error("Please select at least one column to clean.")
             else:
-                st.error("Error in data cleaning.")
+                df.replace([np.inf, -np.inf], 0, inplace=True)
+                df.fillna(0, inplace=True)
+
+                # Convert DataFrame to JSON-safe dictionary
+                json_data = df.replace([np.inf, -np.inf], None).where(pd.notnull(df), None).to_dict(orient="records")
+
+                response = requests.post(
+                    f"{base_url}/process",
+                    json={"data": json_data, "columns": selected_columns}
+                )
+                if response.status_code == 200:
+                    cleaned_data = response.json()["cleaned_data"]
+                    cleaned_columns = response.json()["columns"]
+                    df_cleaned = pd.DataFrame(cleaned_data, columns=cleaned_columns)
+
+                    st.success("Data cleaned successfully!")
+                    st.write("🧹 Cleaned Data", df_cleaned.head())
+                    st.download_button("⬇️ Download Cleaned Data", df_cleaned.to_csv(index=False), "cleaned_data.csv")
+                else:
+                    st.error("Error in data cleaning. Check the server logs for more details.")
 
 elif step == "Visualize Data":
     st.header("📊 Visualize Data")
