@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
+import requests
 import plotly.express as px
 import plotly.colors as pc
 import base64
@@ -18,6 +19,8 @@ def get_base64_image(file_path):
 
 # Convert your logo to Base64
 logo_base64 = get_base64_image("logo2.png")  # Replace with the correct path to your logo file
+
+base_url = "http://127.0.0.1:5000"
 
 # Sidebar: Enlarged Logo and Title
 st.sidebar.markdown(
@@ -86,24 +89,67 @@ def categorize_columns(df):
 # Default Color Palette
 default_palette = px.colors.qualitative.Set1
 
-# Step: Process Data
+# Callback functions for mutual exclusivity
+def select_all_callback():
+    st.session_state["deselect_all"] = False
+
+def deselect_all_callback():
+    st.session_state["select_all"] = False
+
 if step == "Process Data":
     st.header("🛠️ Process Data")
     uploaded_file = st.file_uploader("Upload CSV File for Processing", type="csv")
     if uploaded_file:
+        # Load uploaded data
         df = pd.read_csv(uploaded_file)
         st.write("📋 Uploaded Data", df.head())
-        selected_columns = st.multiselect("Select Columns to Clean", df.columns, default=df.columns.tolist())
+
+        # Checkbox options for selecting/deselecting all columns
+        st.markdown("### Select Columns to Clean")
+        col1, col2 = st.columns(2)
+        with col1:
+            select_all = st.checkbox("Select All Columns", key="select_all")
+        with col2:
+            deselect_all = st.checkbox("Deselect All Columns", key="deselect_all")
+
+        # Dynamically create checkboxes for each column
+        selected_columns = []
+        for col in df.columns:
+            checked = select_all and not deselect_all
+            if st.checkbox(f"Include '{col}'", value=checked, key=f"checkbox_{col}"):
+                selected_columns.append(col)
+
+        # Clean Data Button Logic
         if st.button("✨ Clean Data"):
-            df.replace([np.inf, -np.inf], 0, inplace=True)
-            df.fillna(0, inplace=True)
-            st.success("Data cleaned successfully!")
-            st.write("🧹 Cleaned Data", df.head())
-            st.download_button("⬇️ Download Cleaned Data", df.to_csv(index=False), "cleaned_data.csv")
+            try:
+                # Validate column selection
+                if not selected_columns:
+                    st.error("Please select at least one column to clean.")
+                else:
+                    # Replace infinite values with NaN
+                    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+                    # Fill NaN values with 0
+                    df.fillna(0, inplace=True)
+
+                    # Filter data to include only selected columns
+                    cleaned_data = df[selected_columns]
+
+                    # Display the cleaned data
+                    st.success("Data cleaned successfully!")
+                    st.write("🧹 Cleaned Data", cleaned_data.head())
+
+                    # Download button for cleaned data
+                    st.download_button(
+                        label="⬇️ Download Cleaned Data",
+                        data=cleaned_data.to_csv(index=False),
+                        file_name="cleaned_data.csv",
+                        mime="text/csv"
+                    )
+            except Exception as e:
+                st.error(f"Error during data cleaning: {e}")
     else:
         st.warning("Please upload a CSV file to proceed.")
-
-
 
 # Step: Visualize Data
 elif step == "Visualize Data":
