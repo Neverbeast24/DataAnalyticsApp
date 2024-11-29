@@ -2,9 +2,19 @@ from flask import Flask, request, jsonify
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+import logging
 
 app = Flask(__name__)
 
+# Set up logging
+logging.basicConfig(filename='user_activity.log', level=logging.INFO, format='%(asctime)s - %(message)s')
+
+@app.before_request
+def log_request_info():
+    logging.info(f"Endpoint: {request.endpoint}, Data: {request.json}")
+    
 # Column type specifications
 COLUMN_TYPES = {
     0: {'type': 'str', 'format': r'^\d{3}-\d{2}-\d{3}$', 'default': '000-00-000'},
@@ -25,6 +35,7 @@ COLUMN_TYPES = {
     15: {'type': 'float', 'default': 0.0},
     16: {'type': 'float', 'default': 0.0}
 }
+
 
 def convert_column(data, column_spec):
     """Convert a column to the specified data type and format."""
@@ -69,6 +80,18 @@ def process_data():
     df = df.drop_duplicates().fillna({i: spec['default'] for i, spec in COLUMN_TYPES.items() if i < len(df.columns)})
 
     return jsonify({'cleaned_data': df.to_dict(orient='records'), 'columns': list(df.columns)})
+
+@app.route('/ai/clustering', methods=['POST'])
+def ai_clustering():
+    payload = request.json
+    data = pd.DataFrame(payload['data'])
+    num_clusters = payload.get('num_clusters', 3)
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(data.select_dtypes(include=[np.number]))
+    kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+    clusters = kmeans.fit_predict(scaled_data)
+    data['Cluster'] = clusters
+    return jsonify({'clustered_data': data.to_dict(orient='records')})
 
 if __name__ == '__main__':
     app.run(debug=True)
