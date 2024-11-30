@@ -165,30 +165,26 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
-# Add Background and Styling
-st.markdown(
-    """
+st.markdown("""
     <style>
-    body {
-        font-family: 'Arial', sans-serif;
-    }
-    .css-1d391kg { /* Background for main area */
-        background: linear-gradient(135deg, #1e1e2f, #2a2a48);
-        color: white;
-    }
-    .stButton>button { /* Custom button styling */
-        background-color: #6c63ff;
-        color: white;
-        border-radius: 8px;
-        padding: 10px 20px;
-    }
-    .stTextInput input {
-        border: 1px solid #6c63ff;
-    }
+        .stSidebar {
+            background-color: #000000;
+        }
+        .stButton>button {
+            background-color: #6c63ff;
+            color: white;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+        .stButton>button:hover {
+            background-color: #4c44e1;
+        }
+        .stSelectbox select {
+            background-color: #f4f4f9;
+        }
     </style>
-    """,
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
 # Function to categorize columns
 def categorize_columns(df):
@@ -216,7 +212,25 @@ if step == "Data Cleaning":
     if uploaded_file:
         # Load uploaded data
         df = pd.read_csv(uploaded_file)
-        st.write("📋 Uploaded Data", df.head())
+        st.dataframe(df)
+        st.subheader("Handle Missing Values")
+        fill_method = st.selectbox("Method for Filling Missing Values", ["Mean", "Median", "Mode", "Custom Value"])
+        
+        if fill_method == "Custom Value":
+            fill_value = st.text_input("Enter a custom value to fill missing values")
+            df.fillna(fill_value, inplace=True)
+        elif fill_method == "Mean":
+            df.fillna(df.mean(), inplace=True)
+        elif fill_method == "Median":
+            df.fillna(df.median(), inplace=True)
+        elif fill_method == "Mode":
+            df.fillna(df.mode().iloc[0], inplace=True)
+
+        st.success("Missing values have been filled.")
+
+        # Option to see the cleaned data
+        st.dataframe(df)
+
         
         st.markdown("### Select Columns to Include in Cleaning")
         selected_columns = st.multiselect("Choose Columns:", df.columns, default=df.columns)
@@ -293,62 +307,96 @@ if step == "Data Cleaning":
     else:
         st.warning("Please upload a CSV file to proceed.")
         
+
+# AI Clustering Section
 if step == "AI Clustering":
     st.title("🤖 AI Clustering")
     uploaded_file = st.file_uploader("Upload CSV for Clustering", type="csv")
 
     if uploaded_file:
-        # Load dataset
+        # Load the uploaded dataset
         df = pd.read_csv(uploaded_file)
         st.write("📋 Uploaded Data", df.head())
 
-        # Identify numerical columns
+        # Identify numerical columns for clustering
         numerical_cols, _ = categorize_columns(df)
 
-        if numerical_cols:
-            st.markdown("### Select Columns for Clustering")
+        # Check if the 'Cluster' column already exists (indicating clustering has been performed)
+        if 'Cluster' not in df.columns:
+            st.warning("Please run clustering first!")
+
+            # Let the user select numerical columns for clustering
             selected_columns = st.multiselect("Choose Numerical Columns:", numerical_cols, default=numerical_cols)
 
-            if selected_columns:
+            # If user selects at least 2 columns, proceed to clustering
+            if len(selected_columns) >= 2:
+                # 2D or 3D visualization
+                view_type = st.radio("Select View", ["2D", "3D"])
+
+                # Set the number of clusters
                 num_clusters = st.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
+
+                # Button to start clustering
                 if st.button("Perform Clustering"):
                     try:
-                        # Data preprocessing
+                        # Data Preprocessing: Scaling the data
                         scaler = StandardScaler()
                         scaled_data = scaler.fit_transform(df[selected_columns])
 
-                        # KMeans clustering
+                        # KMeans Clustering
                         kmeans = KMeans(n_clusters=num_clusters, random_state=42)
                         clusters = kmeans.fit_predict(scaled_data)
-                        df["Cluster"] = clusters
+                        df["Cluster"] = clusters  # Add the 'Cluster' column to the dataframe
 
+                        # Show success message and preview the clustered data
+                        st.success('Clustering complete!')
                         st.write("🗂️ Clustered Data", df.head())
 
-                        # Visualize clusters (if 2D or 3D is possible)
-                        if len(selected_columns) == 2:
+                        # 2D Scatter Plot
+                        if view_type == "2D" and len(selected_columns) >= 2:
                             fig = px.scatter(
                                 df,
                                 x=selected_columns[0],
                                 y=selected_columns[1],
-                                color="Cluster",
+                                color="Cluster",  # Using 'Cluster' column for coloring
                                 color_discrete_sequence=px.colors.qualitative.Plotly
                             )
-                            fig.update_layout(title="Cluster Visualization")
+                            fig.update_layout(title="Cluster Visualization (2D)")
                             st.plotly_chart(fig, use_container_width=True)
 
+                        # 3D Scatter Plot
+                        elif view_type == "3D" and len(selected_columns) >= 3:
+                            fig = px.scatter_3d(
+                                df,
+                                x=selected_columns[0],
+                                y=selected_columns[1],
+                                z=selected_columns[2],
+                                color="Cluster",  # Using 'Cluster' column for coloring
+                                color_discrete_sequence=px.colors.qualitative.Plotly
+                            )
+                            fig.update_layout(title="Cluster Visualization (3D)")
+                            st.plotly_chart(fig, use_container_width=True)
+
+                        # Option to download the clustered data
                         st.download_button(
                             label="⬇️ Download Clustered Data",
                             data=df.to_csv(index=False),
                             file_name="clustered_data.csv",
                             mime="text/csv"
                         )
+
                     except Exception as e:
                         st.error(f"Error during clustering: {e}")
+
+                else:
+                    st.info("Select the number of clusters and hit 'Perform Clustering' to begin.")
+
+            else:
+                st.error("Please select at least two columns for clustering.")
         else:
-            st.warning("The dataset does not have numerical columns for clustering.")
+            st.warning("Clustering has already been performed. Please upload a new file to reset.")
     else:
         st.warning("Please upload a CSV file to proceed.")
-
 
 # Step: Visualize Data
 elif step == "Data Visualization":
