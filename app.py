@@ -5,6 +5,8 @@ from datetime import datetime
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import logging
+import re
+from werkzeug.exceptions import BadRequest
 
 app = Flask(__name__)
 
@@ -14,7 +16,7 @@ logging.basicConfig(filename='user_activity.log', level=logging.INFO, format='%(
 @app.before_request
 def log_request_info():
     logging.info(f"Endpoint: {request.endpoint}, Data: {request.json}")
-    
+
 # Column type specifications
 COLUMN_TYPES = {
     0: {'type': 'str', 'format': r'^\d{3}-\d{2}-\d{3}$', 'default': '000-00-000'},
@@ -36,7 +38,6 @@ COLUMN_TYPES = {
     16: {'type': 'float', 'default': 0.0}
 }
 
-
 def convert_column(data, column_spec):
     """Convert a column to the specified data type and format."""
     def convert(value):
@@ -44,11 +45,9 @@ def convert_column(data, column_spec):
             if pd.isnull(value):
                 return column_spec['default']
             if column_spec['type'] == 'str':
-                # If the value is numeric or empty, use the default value
                 if isinstance(value, (int, float)) or str(value).strip().isdigit():
                     raise ValueError
                 if 'format' in column_spec:
-                    import re
                     if not re.match(column_spec['format'], str(value)):
                         raise ValueError
                 return str(value)
@@ -66,32 +65,66 @@ def convert_column(data, column_spec):
 
 @app.route('/process', methods=['POST'])
 def process_data():
-    payload = request.json
-    data = payload['data']
-    selected_columns = payload['columns']
-    df = pd.DataFrame(data)
+    try:
+        payload = request.json
+        if not payload or 'data' not in payload or 'columns' not in payload:
+            raise BadRequest("Payload must contain 'data' and 'columns' keys.")
 
-    # Apply cleaning rules for each column
-    for col_idx, spec in COLUMN_TYPES.items():
-        if col_idx < len(df.columns):
-            df.iloc[:, col_idx] = convert_column(df.iloc[:, col_idx], spec)
+        data = payload['data']
+        selected_columns = payload['columns']
 
-    # Drop duplicates and fill NaN with default
-    df = df.drop_duplicates().fillna({i: spec['default'] for i, spec in COLUMN_TYPES.items() if i < len(df.columns)})
+        # Validate columns
+        if not isinstance(selected_columns, list) or any(not isinstance(col, int) for col in selected_columns):
+            raise BadRequest("The 'columns' key must be a list of integers.")
 
-    return jsonify({'cleaned_data': df.to_dict(orient='records'), 'columns': list(df.columns)})
+        df = pd.DataFrame(data)
+
+        # Apply cleaning rules for each column
+        for col_idx, spec in COLUMN_TYPES.items():
+            if col_idx < len(df.columns):
+                df.iloc[:, col_idx] = convert_column(df.iloc[:, col_idx], spec)
+
+        # Drop duplicates and fill NaN with default
+        df = df.drop_duplicates().fillna({i: spec['default'] for i, spec in COLUMN_TYPES.items() if i < len(df.columns)})
+
+        return jsonify({'cleaned_data': df.to_dict(orient='records'), 'columns': list(df.columns)})
+    except Exception as e:
+        logging.error(f"Error in /process: {str(e)}")
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/ai/clustering', methods=['POST'])
 def ai_clustering():
-    payload = request.json
-    data = pd.DataFrame(payload['data'])
-    num_clusters = payload.get('num_clusters', 3)
-    scaler = StandardScaler()
-    scaled_data = scaler.fit_transform(data.select_dtypes(include=[np.number]))
-    kmeans = KMeans(n_clusters=num_clusters, random_state=42)
-    clusters = kmeans.fit_predict(scaled_data)
-    data['Cluster'] = clusters
-    return jsonify({'clustered_data': data.to_dict(orient='records')})
+    try:
+        payload = request.json
+        if not payload or 'data' not in payload:
+            raise BadRequest("Payload must contain 'data' key.")
+
+        data = pd.DataFrame(payload['data'])
+        num_clusters = payload.get('num_clusters', 3)
+
+        # Validate numeric columns exist
+        numeric_data = data.select_dtypes(include=[np.number])
+        if numeric_data.empty:
+            raise BadRequest("No numeric columns available for clustering.")
+
+        # Validate num_clusters
+        if not isinstance(num_clusters, int) or num_clusters <= 0:
+            raise BadRequest("'num_clusters' must be a positive integer.")
+
+        if len(data) < num_clusters:
+            raise BadRequest("'num_clusters' cannot exceed the number of data points.")
+
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(numeric_data)
+
+        kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+        clusters = kmeans.fit_predict(scaled_data)
+        data['Cluster'] = clusters
+
+        return jsonify({'clustered_data': data.to_dict(orient='records'), 'cluster_centers': kmeans.cluster_centers_.tolist()})
+    except Exception as e:
+        logging.error(f"Error in /ai/clustering: {str(e)}")
+        return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)

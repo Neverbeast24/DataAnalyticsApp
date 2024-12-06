@@ -8,6 +8,14 @@ import base64
 import re
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
+from statsmodels.tsa.arima.model import ARIMA
+from prophet import Prophet
+from prophet.plot import plot_plotly
+import warnings
+
+# predictive, data vizualization 
+warnings.filterwarnings("ignore")
 
 st.set_page_config(
     page_title="Datafluencers: InsightFlow",
@@ -27,6 +35,13 @@ def recommend_chart(df):
     """
     numerical_cols, categorical_cols = categorize_columns(df)
 
+    # Check for empty lists and provide a clear message
+    if not numerical_cols:
+        return "Error", "No numerical columns found in the dataset. Please upload a dataset with numerical columns."
+
+    if not categorical_cols:
+        return "Error", "No categorical columns found in the dataset. Please upload a dataset with categorical columns."
+
     # Recommendation logic with justification
     if len(numerical_cols) == 1 and len(categorical_cols) >= 1:
         recommendation = "Polar Area Chart"
@@ -41,7 +56,7 @@ def recommend_chart(df):
             "A **Scatter Plot** is recommended because the dataset has multiple numerical columns "
             f"({', '.join(numerical_cols)}). This chart is ideal for visualizing relationships or correlations between two numerical variables."
         )
-    elif len(numerical_cols) >= 2 and len(categorical_cols) >= 1:
+    elif len(categorical_cols) > len(numerical_cols):
         recommendation = "Stacked Bar Chart"
         justification = (
             "A **Stacked Bar Chart** is recommended because the dataset contains multiple numerical columns "
@@ -54,19 +69,12 @@ def recommend_chart(df):
             "A **Radar Chart** is recommended because the dataset has multiple numerical columns "
             f"({', '.join(numerical_cols)}). This chart displays multivariate data, making it suitable for comparing values across multiple axes."
         )
-    elif len(numerical_cols) == 1:
-        recommendation = "Area Chart"
-        justification = (
-            "An **Area Chart** is recommended because the dataset has a single numerical column "
-            f"({numerical_cols[0]}). This chart effectively highlights trends over time or sequential data."
-        )
     else:
-        recommendation = "Scatter Plot"
-        justification = (
-            "A **Scatter Plot** is recommended as a fallback because it can handle diverse data types and allows flexible customization."
-        )
+        recommendation = "Error"
+        justification = "The dataset does not meet the required conditions for a specific chart type. Please ensure the dataset has appropriate columns for visualization."
 
     return recommendation, justification
+
     
 # Convert your logo to Base64
 logo_base64 = get_base64_image("logo2.png")  # Replace with the correct path to your logo file
@@ -97,7 +105,7 @@ if "clustered_data" not in st.session_state:
     st.session_state["clustered_data"] = None
 # Ensure the new step is added to the sidebar
 st.sidebar.header("Navigation")
-step = st.sidebar.radio("Go to:", ["Home Dashboard", "Data Cleaning", "AI Clustering", "Data Visualization", "Export Data"])
+step = st.sidebar.radio("Go to:", ["Home Dashboard", "Data Cleaning", "AI Clustering", "Data Visualization","Predictive Analytics"])
 # Home Dashboard Page
 if step == "Home Dashboard":
     st.title("📊 Welcome to InsightFlow!")
@@ -152,7 +160,6 @@ progress = {
     "Data Cleaning": 20,
     "AI Clustering": 50,
     "Data Visualization": 100,
-    "Export Data": 100
 }
 st.sidebar.markdown(
     f"""
@@ -186,14 +193,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Function to categorize columns
+# Function to categorize columns as numerical or categorical
 def categorize_columns(df):
-    """
-    Identifies numerical and categorical columns in the dataset.
-    """
-    numerical_cols = [col for col in df.columns if np.issubdtype(df[col].dtype, np.number)]
-    categorical_cols = [col for col in df.columns if not np.issubdtype(df[col].dtype, np.number)]
+    numerical_cols = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
+    categorical_cols = [col for col in df.columns if pd.api.types.is_string_dtype(df[col])]
     return numerical_cols, categorical_cols
+
+# Function to automatically select the most relevant numerical columns
+def select_automatic_columns(df, max_columns=3):
+    numerical_cols, _ = categorize_columns(df)
+    # Select columns with the highest variance (assuming they have the most information)
+    variance = df[numerical_cols].var()
+    selected_columns = variance.nlargest(max_columns).index.tolist()
+    return selected_columns
 
 # Default Color Palette
 default_palette = px.colors.qualitative.Set1
@@ -209,36 +221,41 @@ def deselect_all_callback():
 if step == "Data Cleaning":
     st.header("🛠️ Process Data")
     uploaded_file = st.file_uploader("Upload CSV File for Processing", type="csv")
+
     if uploaded_file:
         # Load uploaded data
         df = pd.read_csv(uploaded_file)
         st.dataframe(df)
+
+        # Categorize columns into numerical and categorical
+        numerical_cols, _ = categorize_columns(df)
+
         st.subheader("Handle Missing Values")
         fill_method = st.selectbox("Method for Filling Missing Values", ["Mean", "Median", "Mode", "Custom Value"])
-        
+
         if fill_method == "Custom Value":
             fill_value = st.text_input("Enter a custom value to fill missing values")
             df.fillna(fill_value, inplace=True)
-        elif fill_method == "Mean":
-            df.fillna(df.mean(), inplace=True)
-        elif fill_method == "Median":
-            df.fillna(df.median(), inplace=True)
-        elif fill_method == "Mode":
-            df.fillna(df.mode().iloc[0], inplace=True)
+        elif fill_method == "Mean" and numerical_cols:
+            df[numerical_cols] = df[numerical_cols].fillna(df[numerical_cols].mean())
+        elif fill_method == "Median" and numerical_cols:
+            df[numerical_cols] = df[numerical_cols].fillna(df[numerical_cols].median())
+        elif fill_method == "Mode" and numerical_cols:
+            for col in numerical_cols:
+                df[col] = df[col].fillna(df[col].mode().iloc[0])
 
         st.success("Missing values have been filled.")
-
+        
         # Option to see the cleaned data
         st.dataframe(df)
 
-        
         st.markdown("### Select Columns to Include in Cleaning")
         selected_columns = st.multiselect("Choose Columns:", df.columns, default=df.columns)
 
         # Cleaning Options
         st.markdown("### Choose Cleaning Operations")
         remove_duplicates = st.checkbox("Remove Duplicate Rows")
-        handle_missing_values = st.checkbox("Handle Missing Values")
+        handle_missing_values = st.checkbox("Remove Rows with Missing Values")
         standardize_column_names = st.checkbox("Standardize Column Names")
         replace_infinite_values = st.checkbox("Replace Infinite Values with NaN")
         fill_missing_values = st.checkbox("Fill Missing Values with a Default Value")
@@ -274,26 +291,9 @@ if step == "Data Cleaning":
                         cleaned_data.replace([np.inf, -np.inf], np.nan, inplace=True)
                         st.info("Infinite values replaced with NaN.")
 
-                    # Handle missing values with validation
-                    # Handle missing values with validation
-                    if fill_missing_values == 'fill':
-                        fill_value = st.text_input("Enter a value to fill missing values")
-                        error_detected = False
-                        for col in cleaned_data.columns:
-                            if cleaned_data[col].isnull().any():
-                                # Check if fill_value matches the column data type
-                                try:
-                                    expected_type = type(cleaned_data[col].dropna().iloc[0])
-                                    if not isinstance(fill_value, expected_type):
-                                        st.error(f"Column '{col}' expects values of type '{expected_type.__name__}', but the fill value is of type '{type(fill_value).__name__}'.")
-                                        error_detected = True
-                                except IndexError:
-                                    # Handle cases where the column is entirely NaN
-                                    st.error(f"Column '{col}' cannot be filled due to no valid type detected.")
-                                    error_detected = True
-                        if not error_detected:
-                            cleaned_data.fillna(fill_value, inplace=True)
-                            st.success(f"Missing values filled with '{fill_value}'.")
+                    # Preview the cleaning operations
+                    st.write("### Data Preview After Cleaning")
+                    st.dataframe(cleaned_data.head())
 
                     # Download button for cleaned data
                     st.download_button(
@@ -302,8 +302,10 @@ if step == "Data Cleaning":
                         file_name="cleaned_data.csv",
                         mime="text/csv"
                     )
+
             except Exception as e:
                 st.error(f"Error during data cleaning: {e}")
+
     else:
         st.warning("Please upload a CSV file to proceed.")
         
@@ -318,23 +320,24 @@ if step == "AI Clustering":
         df = pd.read_csv(uploaded_file)
         st.write("📋 Uploaded Data", df.head())
 
-        # Identify numerical columns for clustering
-        numerical_cols, _ = categorize_columns(df)
-
         # Check if the 'Cluster' column already exists (indicating clustering has been performed)
         if 'Cluster' not in df.columns:
             st.warning("Please run clustering first!")
 
-            # Let the user select numerical columns for clustering
-            selected_columns = st.multiselect("Choose Numerical Columns:", numerical_cols, default=numerical_cols)
+            # Automatically select numerical columns
+            selected_columns = select_automatic_columns(df, max_columns=3)
+            st.write(f"⚙️ Automatically selected columns for clustering: {selected_columns}")
 
-            # If user selects at least 2 columns, proceed to clustering
+            # If there are at least 2 columns, proceed to clustering
             if len(selected_columns) >= 2:
                 # 2D or 3D visualization
                 view_type = st.radio("Select View", ["2D", "3D"])
 
                 # Set the number of clusters
                 num_clusters = st.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
+
+                # Choose clustering algorithm
+                clustering_algorithm = st.selectbox("Select Clustering Algorithm", ["KMeans", "DBSCAN", "Agglomerative"])
 
                 # Button to start clustering
                 if st.button("Perform Clustering"):
@@ -343,15 +346,31 @@ if step == "AI Clustering":
                         scaler = StandardScaler()
                         scaled_data = scaler.fit_transform(df[selected_columns])
 
-                        # KMeans Clustering
-                        kmeans = KMeans(n_clusters=num_clusters, random_state=42)
-                        clusters = kmeans.fit_predict(scaled_data)
-                        df["Cluster"] = clusters  # Add the 'Cluster' column to the dataframe
+                        # Clustering based on selected algorithm
+                        if clustering_algorithm == "KMeans":
+                            kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+                            clusters = kmeans.fit_predict(scaled_data)
+                        elif clustering_algorithm == "DBSCAN":
+                            from sklearn.cluster import DBSCAN
+                            dbscan = DBSCAN(eps=0.5, min_samples=5)
+                            clusters = dbscan.fit_predict(scaled_data)
+                        elif clustering_algorithm == "Agglomerative":
+                            from sklearn.cluster import AgglomerativeClustering
+                            agg = AgglomerativeClustering(n_clusters=num_clusters)
+                            clusters = agg.fit_predict(scaled_data)
+
+                        # Add the 'Cluster' column to the dataframe
+                        df["Cluster"] = clusters
 
                         # Show success message and preview the clustered data
-                        st.success('Clustering complete!')
+                        st.success(f"Clustering complete using {clustering_algorithm}!")
                         st.write("🗂️ Clustered Data", df.head())
 
+                        # Calculate silhouette score (optional, if applicable)
+                        if clustering_algorithm == "KMeans":
+                            silhouette_avg = silhouette_score(scaled_data, clusters)
+                            st.write(f"Silhouette Score: {silhouette_avg:.2f}")
+                        
                         # 2D Scatter Plot
                         if view_type == "2D" and len(selected_columns) >= 2:
                             fig = px.scatter(
@@ -359,7 +378,8 @@ if step == "AI Clustering":
                                 x=selected_columns[0],
                                 y=selected_columns[1],
                                 color="Cluster",  # Using 'Cluster' column for coloring
-                                color_discrete_sequence=px.colors.qualitative.Plotly
+                                color_discrete_sequence=px.colors.qualitative.Plotly,
+                                labels={selected_columns[0]: selected_columns[0], selected_columns[1]: selected_columns[1]}
                             )
                             fig.update_layout(title="Cluster Visualization (2D)")
                             st.plotly_chart(fig, use_container_width=True)
@@ -372,7 +392,8 @@ if step == "AI Clustering":
                                 y=selected_columns[1],
                                 z=selected_columns[2],
                                 color="Cluster",  # Using 'Cluster' column for coloring
-                                color_discrete_sequence=px.colors.qualitative.Plotly
+                                color_discrete_sequence=px.colors.qualitative.Plotly,
+                                labels={selected_columns[0]: selected_columns[0], selected_columns[1]: selected_columns[1], selected_columns[2]: selected_columns[2]}
                             )
                             fig.update_layout(title="Cluster Visualization (3D)")
                             st.plotly_chart(fig, use_container_width=True)
@@ -403,7 +424,7 @@ elif step == "Data Visualization":
     st.header("📊 Visualize Data")
     uploaded_file = st.file_uploader("Upload CSV File for Visualization", type="csv")
 
-    if uploaded_file:
+    if uploaded_file:  
         df = pd.read_csv(uploaded_file)
         st.markdown("### Uploaded Data")
         st.dataframe(df, use_container_width=True)
@@ -417,7 +438,15 @@ elif step == "Data Visualization":
 
         # Categorize columns
         numerical_cols, categorical_cols = categorize_columns(df)
+        # Check for empty column lists
+        if not numerical_cols:
+            st.error("No numerical columns found in the dataset. Please upload a dataset with numerical data.")
+            st.stop()
+        if not categorical_cols:
+            st.error("No categorical columns found in the dataset. Please upload a dataset with categorical data.")
+            st.stop()
 
+            
         # Allow user to select chart type
         chart_type = st.selectbox("📈 Choose Chart Type", [
             "Polar Area Chart", "Radar Chart", "Area Chart", "Scatter Plot", "Stacked Bar Chart"
@@ -450,7 +479,10 @@ elif step == "Data Visualization":
         st.markdown("### Chart Customization and Output")
         chart_title = st.text_input("Chart Title", value=f"My {chart_type}")
         show_legend = st.checkbox("Show Legend", value=True)
-        fill_option = st.checkbox("Fill Area (if applicable)", value=False) if chart_type in ["Radar Chart", "Area Chart"] else None
+        fill_option = st.checkbox("Fill Area (if applicable)", value=False) 
+        if chart_type in ["Polar Area Chart", "Radar Chart"] and (not theta_col or not r_col):     
+            st.warning("Please select both 'theta' (categorical) and 'r' (numerical) columns.")
+            # return #fix here
 
         # Generate the chart
         if st.button("Generate Chart"):
@@ -529,22 +561,98 @@ elif step == "Data Visualization":
 
             except Exception as e:
                 st.error(f"An error occurred while creating the {chart_type}: {e}")
-    # Step: Export Data
-elif step == "Export Data":
-    st.header("📤 Export Data")
-    if st.session_state["clustered_data"] is not None:
-        st.download_button(
-            label="Download Clustered Data",
-            data=st.session_state["clustered_data"].to_csv(index=False),
-            file_name="clustered_data.csv",
-            mime="text/csv"
-        )
-    elif st.session_state["cleaned_data"] is not None:
-        st.download_button(
-            label="Download Cleaned Data",
-            data=st.session_state["cleaned_data"].to_csv(index=False),
-            file_name="cleaned_data.csv",
-            mime="text/csv"
-        )
+
+if step == "Predictive Analytics":
+    st.header("📈 Predictive Analytics")
+
+    # File Upload
+    uploaded_file = st.file_uploader("Upload CSV File for Forecasting", type="csv")
+    if uploaded_file:
+        # Load Data
+        df = pd.read_csv(uploaded_file)
+        st.subheader("Uploaded Data")
+        st.dataframe(df)
+
+        # Prefer 'Date' column as time_col if it exists
+        if 'Date' in df.columns:
+            time_col = 'Date'
+            df[time_col] = pd.to_datetime(df[time_col], errors='coerce')  # Ensure proper datetime conversion
+            if df[time_col].isnull().any():
+                st.error("The 'Date' column contains invalid or missing values. Please clean your data.")
+                st.stop()
+            df = df.sort_values(by=time_col)
+            st.info(f"Time progression detected using column: {time_col}")
+        else:
+            # Automatically detect date-like columns
+            date_columns = [
+                col for col in df.columns if pd.to_datetime(df[col], errors='coerce').notna().all()
+            ]
+            if date_columns:
+                time_col = date_columns[0]  # Automatically select the first detected date column
+                df[time_col] = pd.to_datetime(df[time_col], errors='coerce')  # Ensure proper datetime conversion
+                df = df.sort_values(by=time_col)
+                st.info(f"Time progression detected using column: {time_col}")
+            else:
+                st.error("No valid date column detected. Please upload a dataset with a proper date or time column.")
+                st.stop()
+
+        # Prefer 'Total' column as metric_col if it exists
+        if 'Total' in df.columns:
+            metric_col = 'Total'
+            st.info(f"Forecasting metric detected: {metric_col}")
+        else:
+            # Automatically detect numeric columns
+            numeric_columns = [
+                col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])
+            ]
+            if numeric_columns:
+                metric_col = numeric_columns[0]  # Automatically select the first numeric column
+                st.info(f"Forecasting metric detected: {metric_col}")
+            else:
+                st.error("No numeric columns found for forecasting. Please upload a dataset with numerical data.")
+                st.stop()
+
+        # Forecast Period
+        forecast_period = st.selectbox("Select Forecast Period", ["1 Month", "1 Year", "3 Years", "5 Years"])
+        periods = {"1 Month": 1, "1 Year": 12, "3 Years": 36, "5 Years": 60}
+        forecast_steps = periods[forecast_period]
+
+        # Forecasting Logic
+        if st.button("Run Forecast"):
+            try:
+                # Prophet Forecasting
+                from prophet import Prophet
+                from prophet.plot import plot_plotly
+
+                prophet_df = df[[time_col, metric_col]].rename(columns={time_col: 'ds', metric_col: 'y'})
+
+                # Ensure the 'ds' column contains datetime values
+                if not pd.api.types.is_datetime64_any_dtype(prophet_df['ds']):
+                    st.error("The selected time column does not contain valid datetime values.")
+                    st.stop()
+
+                # Create and fit the Prophet model
+                prophet_model = Prophet()
+                prophet_model.fit(prophet_df)
+
+                # Forecast for the selected period
+                future = prophet_model.make_future_dataframe(periods=forecast_steps, freq='M')
+                forecast = prophet_model.predict(future)
+
+                # Visualize the forecast
+                st.success("Forecasting Complete!")
+                fig = plot_plotly(prophet_model, forecast)
+                st.plotly_chart(fig)
+
+                # Provide Forecasted Data for Download
+                st.download_button(
+                    label="Download Forecasted Data",
+                    data=forecast[['ds', 'yhat']].to_csv(index=False),
+                    file_name="forecasted_data.csv",
+                    mime="text/csv"
+                )
+
+            except Exception as e:
+                st.error(f"Error during forecasting: {e}")
     else:
-        st.warning("No data available for export. Please process your data first.")
+        st.warning("Please upload a CSV file to proceed.")
