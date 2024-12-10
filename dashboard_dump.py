@@ -15,24 +15,23 @@ from prophet.plot import plot_plotly
 import warnings
 import requests
 
+# Initialize session state for messages
+if "messages" not in st.session_state:
+    st.session_state["messages"] = [] 
+    
 # predictive, data vizualization 
 warnings.filterwarnings("ignore")
 
-# Page Configuration
 st.set_page_config(
-    page_title="InsightFlow Studio",
+    page_title="Datafluencers: InsightFlow",
     layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'About': "## InsightFlow Studio\nAI-Driven Analytics Platform"
-    }
+    initial_sidebar_state="expanded"
 )
 
-# Function to convert an image to Base64
+# Function to convert the image to Base64
 def get_base64_image(file_path):
     with open(file_path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode()
-
 
 def recommend_chart(df):
     """
@@ -80,85 +79,24 @@ def recommend_chart(df):
 
     return recommendation, justification
 
-# Replace with your logo path
-logo_base64 = get_base64_image("logo-new.png")
+    
+# Convert your logo to Base64
+logo_base64 = get_base64_image("logo2.png")  # Replace with the correct path to your logo file
 
-# Initialize Session State for Navigation
-if 'active_page' not in st.session_state:
-    st.session_state['active_page'] = 'Dashboard'
-
-# Function to Set the Active Page
-def set_page(page_name):
-    st.session_state['active_page'] = page_name
-
-def sidebar():
-    # Sidebar Logo
-    st.sidebar.image(f"data:image/png;base64,{logo_base64}", use_column_width=True)
-    st.sidebar.markdown("<p style='text-align: center; color: #00bfae; font-size: 1.2rem;'>AI-Driven Analytics Platform</p>", unsafe_allow_html=True)
-    st.sidebar.markdown("<hr style='border-top: 2px solid #00bfae;'>", unsafe_allow_html=True)
-
-    # Pages Dictionary and Progress Mapping
-    pages = {
-        "Dashboard": 0,
-        "Data Cleaning": 20,
-        "Clustering": 50,
-        "Data Visualization": 80,
-        "Predictive Analytics": 100, 
-        "Gemini AI": 100
-    }
-
-    st.markdown("""
-    <style>
-        .stButton>button {
-            background-color: #0E1117;
-            color: white;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-size: 14px;
-            width: 100%;
-            text-align: left;
-            margin-bottom: 5px;
-            font-weight: normal; /* Default font weight */
-            border: 2px solid transparent; /* Default border */
-        }
-        .stButton>button:hover, .stButton>button.selected {
-            background-color: #00bfae;
-            color: #1b2a41;
-            font-weight: bold; /* Bold font on hover */
-            border: 2px solid transparent; /* Ensure no border appears on hover */
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Generate navigation buttons
-    for page_name in pages.keys():
-        # Add "selected" class if the button is for the current active page
-        button_class = "selected" if st.session_state['active_page'] == page_name else ""
-
-        # Create the button
-        if st.sidebar.button(page_name, key=page_name):
-            st.session_state['active_page'] = page_name  # Update the active page
-
-    progress = {
-    "Dashboard": 0,
-    "Data Cleaning": 20,
-    "Clustering": 50,
-    "Data Visualization": 80,
-    "Predictive Analytics": 100,
-    "Gemini AI": 100
-    }
-
-    st.sidebar.markdown(
-        f"""
-        <div style="margin-top: 20px;">
-            <label>Progress:</label>
-            <progress value="{progress.get(st.session_state['active_page'], 0)}" max="100" style="width: 100%;"></progress>
-            <span style="font-size: 0.8rem; color: #FFFFFF;">{progress.get(st.session_state['active_page'], 0)}% Complete</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
+base_url = "http://127.0.0.1:5000"
+    
+# Sidebar: Enlarged Logo and Title
+st.sidebar.markdown(
+    f"""
+    <div style="text-align: center;">
+        <img src="data:image/png;base64,{logo_base64}" alt="InsightFlow Logo" style="width: 150px; margin-bottom: 10px;">
+        <h1 style="margin: 0; font-size: 1.8rem;">InsightFlow</h1>
+    </div>
+    <p style="font-size: 0.9rem; color: #888; text-align: center;">A step-by-step guide to process and visualize your data.</p>
+    <hr style="border: none; border-top: 2px solid #eee; margin: 10px 0;">
+    """,
+    unsafe_allow_html=True
+)
 
 # Initialize session state
 if "uploaded_file" not in st.session_state:
@@ -169,15 +107,17 @@ if "cleaned_data" not in st.session_state:
 
 if "clustered_data" not in st.session_state:
     st.session_state["clustered_data"] = None
-    
-    
-# Pages Implementation
-def dashboard_page():
+# Ensure the new step is added to the sidebar
+st.sidebar.header("Navigation")
+step = st.sidebar.radio("Go to:", ["Home Dashboard", "Data Cleaning", "AI Clustering", "Data Visualization","Predictive Analytics", "Gemini AI Chatbot"])
+# Home Dashboard Page
+if step == "Home Dashboard":
+    st.title("📊 Welcome to InsightFlow!")
     st.markdown("""
         <div style="text-align: center;">
-            <h2 style="color:  #ffffff;">📊 Visualize with InsightFlow!</h2>
-            <p style="font-size: 1.1rem; color: #fffff1;">
-                Transform your data into insights!
+            <h2 style="color: #6c63ff;">Transform Your Data Into Insights!</h2>
+            <p style="font-size: 1.1rem; color: #888;">
+                InsightFlow combines AI-powered clustering, data cleaning, and visualization to simplify your data journey.
             </p>
         </div>
         <hr style="border: none; border-top: 2px solid #eee; margin: 10px 0;">
@@ -186,7 +126,7 @@ def dashboard_page():
     # Trivia Section
     st.subheader("📖 Did You Know?")
     trivia = [
-        "90% of the world's data has been created in the last two years.",
+        f"90% of the world's data has been created in the last two years.",
         "The average person generates about 1.7 MB of data every second.",
         "Data visualization can improve decision-making efficiency by up to 28%.",
         "The first computer database was developed in 1960 by Charles Bachman."
@@ -214,9 +154,48 @@ def dashboard_page():
     # Motivational Quote
     st.markdown("""
         <div style="text-align: center; margin-top: 20px;">
-            <h3 style="color: #00bfae;">"Data is a precious thing and will last longer than the systems themselves." – Tim Berners-Lee</h3>
+            <h3 style="color: #6c63ff;">"Data is a precious thing and will last longer than the systems themselves." – Tim Berners-Lee</h3>
         </div>
     """, unsafe_allow_html=True)
+
+
+# Progress Indicator
+progress = {
+    "Data Cleaning": 20,
+    "AI Clustering": 50,
+    "Data Visualization": 100,
+}
+st.sidebar.markdown(
+    f"""
+    <div style="margin-top: 20px;">
+        <label>Progress:</label>
+        <progress value="{progress.get(step, 0)}" max="100" style="width: 100%;"></progress>
+        <span style="font-size: 0.8rem; color: #888;">{progress.get(step, 0)}% Complete</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown("""
+    <style>
+        .stSidebar {
+            background-color: #000000;
+        }
+        .stButton>button {
+            background-color: #6c63ff;
+            color: white;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+        .stButton>button:hover {
+            background-color: #4c44e1;
+        }
+        .stSelectbox select {
+            background-color: #f4f4f9;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Function to categorize columns as numerical or categorical
 def categorize_columns(df):
@@ -242,8 +221,8 @@ def select_all_callback():
 def deselect_all_callback():
     st.session_state["select_all"] = False
 
-def data_cleaning_page():
-    st.markdown("<h1>Data Cleaning</h1>", unsafe_allow_html=True)
+    
+if step == "Data Cleaning":
     st.header("🛠️ Process Data")
     uploaded_file = st.file_uploader("Upload CSV File for Processing", type="csv")
 
@@ -333,10 +312,11 @@ def data_cleaning_page():
 
     else:
         st.warning("Please upload a CSV file to proceed.")
+        
 
-def ai_clustering_page():
-    st.markdown("<h1>Clustering</h1>", unsafe_allow_html=True)
-    st.title("🤖 Clustering")
+# AI Clustering Section
+if step == "AI Clustering":
+    st.title("🤖 AI Clustering")
     uploaded_file = st.file_uploader("Upload CSV for Clustering", type="csv")
 
     if uploaded_file:
@@ -443,8 +423,8 @@ def ai_clustering_page():
     else:
         st.warning("Please upload a CSV file to proceed.")
 
-def data_visualization_page():
-    st.markdown("<h1>Data Visualization</h1>", unsafe_allow_html=True)
+# Step: Visualize Data
+elif step == "Data Visualization":
     st.header("📊 Visualize Data")
     uploaded_file = st.file_uploader("Upload CSV File for Visualization", type="csv")
 
@@ -586,8 +566,7 @@ def data_visualization_page():
             except Exception as e:
                 st.error(f"An error occurred while creating the {chart_type}: {e}")
 
-def predictive_analytics_page():
-    st.markdown("<h1>Predictive Analytics</h1>", unsafe_allow_html=True)
+if step == "Predictive Analytics":
     st.header("📈 Predictive Analytics")
 
     # File Upload
@@ -682,8 +661,8 @@ def predictive_analytics_page():
     else:
         st.warning("Please upload a CSV file to proceed.")
 
-def gemini_ai():
-    st.markdown("<h1>Gemini AI</h1>", unsafe_allow_html=True)
+# Streamlit front-end for the Gemini AI Text Generation
+if step == "Gemini AI Text Generation":
     st.title("Gemini AI Text Generation")
     st.write("Generate text using Gemini AI.")
 
@@ -707,50 +686,3 @@ def gemini_ai():
                 st.error(f"Failed to connect to the backend. Error: {e}")
         else:
             st.warning("Please enter a prompt.")
-# Footer
-def footer():
-    st.markdown(
-        """
-        <div style="
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100vw;
-            height: 40px;
-            background-color: #1f2b38;
-            color: #e4e9f0;
-            text-align: center;
-            line-height: 40px;
-            font-size: 0.8rem;
-            z-index: 1000;
-        ">
-            © 2024 InsightFlow Studio. All rights reserved.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# Main Function
-def main():
-    # Sidebar
-    sidebar()
-
-    # Render the selected page
-    if st.session_state['active_page'] == "Dashboard":
-        dashboard_page()
-    elif st.session_state['active_page'] == "Data Cleaning":
-        data_cleaning_page()
-    elif st.session_state['active_page'] == "Clustering":
-        ai_clustering_page()
-    elif st.session_state['active_page'] == "Data Visualization":
-        data_visualization_page()
-    elif st.session_state['active_page'] == "Predictive Analytics":
-        predictive_analytics_page()
-    elif st.session_state['active_page'] == "Gemini AI":
-        gemini_ai()
-
-    # Footer
-    footer()
-
-if __name__ == "__main__":
-    main()

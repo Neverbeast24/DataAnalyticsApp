@@ -7,11 +7,39 @@ from sklearn.preprocessing import StandardScaler
 import logging
 import re
 from werkzeug.exceptions import BadRequest
+from transformers import pipeline
+import uuid
+import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Set up logging
+# Configure logging
 logging.basicConfig(filename='user_activity.log', level=logging.INFO, format='%(asctime)s - %(message)s')
+
+# Configure the Gemini API
+genai.configure(api_key="AIzaSyDouj7jzPq-ObX9FsGUb7G8QnEbzo2zF1U")  # Replace with your Gemini API key
+
+@app.route('/api/generate-text', methods=['POST'])
+def generate_text():
+    """
+    Endpoint to generate text using the Gemini API.
+    """
+    try:
+        data = request.get_json()
+        prompt = data.get("prompt")
+        if not prompt:
+            return jsonify({"error": "No prompt provided"}), 400
+
+        # Generate text using the Gemini API
+        model = genai.GenerativeModel(model="gemini-1.5-flash")  # Replace with your desired model
+        response = model.generate_content(prompt)
+
+        # Return the generated text
+        return jsonify({"reply": response.text})
+    except Exception as e:
+        logging.error(f"Error in /api/generate-text: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 @app.before_request
 def log_request_info():
@@ -125,6 +153,7 @@ def ai_clustering():
     except Exception as e:
         logging.error(f"Error in /ai/clustering: {str(e)}")
         return jsonify({'error': str(e)}), 400
+
 
 if __name__ == '__main__':
     app.run(debug=True)
