@@ -10,4 +10,6 @@ prophet==1.1.1
 google-generativeai==0.1.0
 transformers==4.26.1
 werkzeug==2.2.3
+matplotlib==3.6.3
+statsmodels==0.13.5
 
