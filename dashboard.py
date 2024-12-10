@@ -27,6 +27,108 @@ if step == "Process Data":
     st.header("🛠️ Process Data")
     uploaded_file = st.file_uploader("Upload CSV File for Processing", type="csv")
     if uploaded_file:
+<<<<<<< Updated upstream
+=======
+        # Load uploaded data
+        df = pd.read_csv(uploaded_file)
+        st.dataframe(df)
+
+        # Categorize columns into numerical and categorical
+        numerical_cols, _ = categorize_columns(df)
+        
+        st.markdown("### Select Columns to Include in Cleaning")
+        selected_columns = st.multiselect("Choose Columns:", df.columns, default=df.columns)
+
+        # Cleaning Options
+        st.markdown("### Choose Cleaning Operations")
+        remove_empty_rows = st.checkbox("Remove Empty Rows")
+        remove_duplicates = st.checkbox("Remove Duplicate Rows")
+        handle_missing_values = st.checkbox("Remove Rows with Missing Values")
+        standardize_column_names = st.checkbox("Standardize Column Names")
+        replace_infinite_values = st.checkbox("Replace Infinite Values with NaN")
+        fill_missing_values = st.checkbox("Fill Missing Values with a Default Value")
+        
+        # Additional options for missing values
+        if fill_missing_values:
+            fill_method = st.selectbox("Choose a method to fill missing values:", ["Mean", "Median", "Mode", "Enter Default Value"])
+            fill_value = None
+            if fill_method == "Enter Default Value":
+                fill_value = st.text_input("Enter a default value to replace missing values:", value="0")
+
+        # Clean Data Button Logic
+        if st.button("✨ Clean Data"):
+            try:
+                # Validate column selection
+                if not selected_columns:
+                    st.error("Please select at least one column to clean.")
+                else:
+                    # Filter the DataFrame to selected columns
+                    cleaned_data = df[selected_columns]
+
+                    # Perform cleaning operations
+                    if remove_duplicates:
+                        cleaned_data = cleaned_data.drop_duplicates()
+                        st.info("Duplicate rows removed.")
+
+                    if fill_missing_values:
+                        if fill_method == "Mean":
+                            cleaned_data = cleaned_data.fillna(cleaned_data.mean(numeric_only=True))
+                            st.info("Missing values filled with column mean.")
+                        elif fill_method == "Median":
+                            cleaned_data = cleaned_data.fillna(cleaned_data.median(numeric_only=True))
+                            st.info("Missing values filled with column median.")
+                        elif fill_method == "Mode":
+                            for column in cleaned_data.columns:
+                                mode_value = cleaned_data[column].mode().iloc[0] if not cleaned_data[column].mode().empty else None
+                                cleaned_data[column] = cleaned_data[column].fillna(mode_value)
+                            st.info("Missing values filled with column mode.")
+                        elif fill_method == "Enter Default Value" and fill_value is not None:
+                            cleaned_data = cleaned_data.fillna(value=fill_value)
+                            st.info(f"Missing values filled with: {fill_value}")
+                    
+                    if handle_missing_values:
+                        cleaned_data = cleaned_data.dropna()
+                        st.info("Rows with missing values removed.")
+
+                    if standardize_column_names:
+                        cleaned_data.columns = [col.strip().lower().replace(" ", "_") for col in cleaned_data.columns]
+                        st.info("Column names standardized.")
+
+                    if replace_infinite_values:
+                        cleaned_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+                        st.info("Infinite values replaced with NaN.")
+                    
+                    if remove_empty_rows:  # Handle empty row removal
+                        cleaned_data = cleaned_data.dropna(how='all')
+                        st.info("Empty rows removed.")
+                        
+                    # Preview the cleaning operations
+                    st.write("### Data Preview After Cleaning")
+                    st.dataframe(cleaned_data)
+
+                    # Download button for cleaned data
+                    st.download_button(
+                        label="⬇️ Download Cleaned Data",
+                        data=cleaned_data.to_csv(index=False),
+                        file_name="cleaned_data.csv",
+                        mime="text/csv"
+                    )
+
+            except Exception as e:
+                st.error(f"Error during data cleaning: {e}")
+
+    else:
+        st.warning("Please upload a CSV file to proceed.")
+        
+
+# AI Clustering Section
+if step == "AI Clustering":
+    st.title("🤖 AI Clustering")
+    uploaded_file = st.file_uploader("Upload CSV for Clustering", type="csv")
+
+    if uploaded_file:
+        # Load the uploaded dataset
+>>>>>>> Stashed changes
         df = pd.read_csv(uploaded_file)
         st.write("📋 Uploaded Data", df.head())
 
