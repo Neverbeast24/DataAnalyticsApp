@@ -93,7 +93,7 @@ def set_page(page_name):
 
 def sidebar():
     # Sidebar Logo
-    st.sidebar.image(f"data:image/png;base64,{logo_base64}", use_column_width=True)
+    st.sidebar.image(f"data:image/png;base64,{logo_base64}", use_container_width=True)
     st.sidebar.markdown("<p style='text-align: center; color: #00bfae; font-size: 1.2rem;'>AI-Driven Analytics Platform</p>", unsafe_allow_html=True)
     st.sidebar.markdown("<hr style='border-top: 2px solid #00bfae;'>", unsafe_allow_html=True)
 
@@ -158,6 +158,19 @@ def sidebar():
         """,
         unsafe_allow_html=True
     )
+     # Add "About" section at the bottom
+    st.sidebar.markdown("<hr style='border-top: 2px solid #00bfae;'>", unsafe_allow_html=True)
+    st.sidebar.markdown(
+        """
+        <div style="text-align: center; font-size: 0.9rem; color: #e4e9f0;">
+            <strong>About InsightFlow Studio</strong><br>
+            InsightFlow Studio is an AI-driven analytics platform designed to streamline data preprocessing, clustering, visualization, and predictive analytics. Built for ease of use, scalability, and precision.
+            <br><br>
+            © 2024 InsightFlow Studio. All rights reserved.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # Initialize session state
@@ -170,53 +183,154 @@ if "cleaned_data" not in st.session_state:
 if "clustered_data" not in st.session_state:
     st.session_state["clustered_data"] = None
     
-    
-# Pages Implementation
-def dashboard_page():
+def style_page():
     st.markdown("""
-        <div style="text-align: center;">
-            <h2 style="color:  #ffffff;">📊 Visualize with InsightFlow!</h2>
-            <p style="font-size: 1.1rem; color: #fffff1;">
-                Transform your data into insights!
-            </p>
-        </div>
-        <hr style="border: none; border-top: 2px solid #eee; margin: 10px 0;">
+    <style>
+        /* General body styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        /* Sidebar styling */
+        .css-1aumxhk {
+            background: linear-gradient(135deg, #0066ff, #00ccff);
+            color: #ffffff;
+        }
+        .css-1aumxhk .css-8c4qvf, .css-1aumxhk .css-nqowgj {
+            color: #ffffff;
+        }
+        .css-1aumxhk .css-8c4qvf:hover {
+            background-color: #0057e7 !important;
+            font-weight: bold;
+        }
+
+        /* Title and navigation buttons */
+        .title-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .title-container h1 {
+            color: #00ffcc;
+            font-size: 2.8rem;
+            font-weight: bold;
+            animation: fadeIn 2s;
+        }
+        .title-container p {
+            color: #66d9ff;
+            font-size: 1.3rem;
+            animation: fadeIn 2s ease-in-out;
+        }
+
+        /* Button container styling */
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .button-container button {
+            background: linear-gradient(to right, #0077ff, #00e6e6);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.3s, background 0.3s;
+        }
+        .button-container button:hover {
+            background: linear-gradient(to right, #00e6e6, #0077ff);
+            font-weight: bold;
+            transform: scale(1.1);
+        }
+
+        /* Cards styling */
+        .section-card {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+            animation: slideIn 1.5s;
+        }
+        .section-card h2 {
+            color: #00bfae;
+            text-align: center;
+        }
+        .section-card p {
+            color: #cccccc;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+    </style>
     """, unsafe_allow_html=True)
 
-    # Trivia Section
-    st.subheader("📖 Did You Know?")
-    trivia = [
-        "90% of the world's data has been created in the last two years.",
-        "The average person generates about 1.7 MB of data every second.",
-        "Data visualization can improve decision-making efficiency by up to 28%.",
-        "The first computer database was developed in 1960 by Charles Bachman."
-    ]
-    st.markdown(f"💡 **{np.random.choice(trivia)}**")
+def dashboard_page():
+    style_page()
+
+    # Title Section with Animation
+    st.markdown("""
+        <div class="title-container">
+            <h1>📊 Visualize with InsightFlow!</h1>
+            <p>Transform your data into powerful insights with ease.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Buttons for Navigation with Smooth Scrolling
+    st.markdown("""
+        <div class="button-container">
+            <button onclick="document.getElementById('trivia').scrollIntoView({ behavior: 'smooth' })"> Data Cleaning </button>
+            <button onclick="document.getElementById('interactive-charts').scrollIntoView({ behavior: 'smooth' })">Clustering </button>
+            <button onclick="document.getElementById('quote').scrollIntoView({ behavior: 'smooth' })"> Data Visualization</button>
+            <button onclick="document.getElementById('interactive-charts').scrollIntoView({ behavior: 'smooth' })">Predictive Analytics </button>
+            <button onclick="document.getElementById('quote').scrollIntoView({ behavior: 'smooth' })"> Gemini AI</button>
+        </div>
+    """, unsafe_allow_html=True)
 
     # Interactive Chart Section
-    st.subheader("🌟 Explore Interactive Data")
-    sample_data = pd.DataFrame({
-        "Year": [2019, 2020, 2021, 2022],
-        "Revenue (in $M)": [50, 60, 70, 85],
-        "Profit (in $M)": [10, 15, 20, 25]
-    })
+    with st.container():
+        st.markdown('<div id="interactive-charts" class="section-card"><h2>📈 Explore Interactive Data</h2></div>', unsafe_allow_html=True)
+        sample_data = pd.DataFrame({
+            "Year": [2019, 2020, 2021, 2022],
+            "Revenue (in $M)": [50, 60, 70, 85],
+            "Profit (in $M)": [10, 15, 20, 25]
+        })
 
-    chart_type = st.radio("Choose a Chart Type:", ["Line Chart", "Bar Chart", "Area Chart"])
-    if chart_type == "Line Chart":
-        fig = px.line(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"])
-    elif chart_type == "Bar Chart":
-        fig = px.bar(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"], barmode="group")
-    elif chart_type == "Area Chart":
-        fig = px.area(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"])
+        chart_type = st.radio("Choose a Chart Type:", ["Line Chart", "Bar Chart", "Area Chart"], horizontal=True)
+        if chart_type == "Line Chart":
+            fig = px.line(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"], title="Line Chart - Revenue and Profit")
+        elif chart_type == "Bar Chart":
+            fig = px.bar(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"], barmode="group", title="Bar Chart - Revenue and Profit")
+        elif chart_type == "Area Chart":
+            fig = px.area(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"], title="Area Chart - Revenue and Profit")
 
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Motivational Quote
-    st.markdown("""
-        <div style="text-align: center; margin-top: 20px;">
-            <h3 style="color: #00bfae;">"Data is a precious thing and will last longer than the systems themselves." – Tim Berners-Lee</h3>
-        </div>
-    """, unsafe_allow_html=True)
+        st.plotly_chart(fig, use_container_width=True)
+        # Trivia Section
+    with st.container():
+        st.markdown('<div id="trivia" class="section-card"><h2>📖 Did You Know?</h2></div>', unsafe_allow_html=True)
+        trivia = [
+            "90% of the world's data has been created in the last two years.",
+            "The average person generates about 1.7 MB of data every second.",
+            "Data visualization can improve decision-making efficiency by up to 28%.",
+            "The first computer database was developed in 1960 by Charles Bachman."
+        ]
+        if st.button("🔄 Shuffle Trivia"):
+            selected_trivia = np.random.choice(trivia)
+        else:
+            selected_trivia = trivia[0]
+        st.info(f"💡 **{selected_trivia}**")
 
 # Function to categorize columns as numerical or categorical
 def categorize_columns(df):
@@ -243,8 +357,7 @@ def deselect_all_callback():
     st.session_state["select_all"] = False
 
 def data_cleaning_page():
-    st.markdown("<h1>Data Cleaning</h1>", unsafe_allow_html=True)
-    st.header("🛠️ Process Data")
+    st.markdown("<h1>🛠️ Data Cleaning</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload CSV File for Processing", type="csv")
 
     if uploaded_file:
@@ -340,117 +453,107 @@ def data_cleaning_page():
         st.warning("Please upload a CSV file to proceed.")
 
 def ai_clustering_page():
-    st.markdown("<h1>Clustering</h1>", unsafe_allow_html=True)
-    st.title("🤖 Clustering")
+    st.markdown("<h1>🛠️ Clustering</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload CSV for Clustering", type="csv")
 
     if uploaded_file:
         # Load the uploaded dataset
-        df = pd.read_csv(uploaded_file)
-        st.write("📋 Uploaded Data", df.head())
+        try:
+            df = pd.read_csv(uploaded_file)
+            st.write("📋 Uploaded Data", df.head())
+        except Exception as e:
+            st.error(f"Error reading the file: {e}")
+            return
 
-        # Check if the 'Cluster' column already exists (indicating clustering has been performed)
-        if 'Cluster' not in df.columns:
-            st.warning("Please run clustering first!")
+        # Detect numeric columns
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
-            # Automatically select numerical columns
-            selected_columns = select_automatic_columns(df, max_columns=3)
-            st.write(f"⚙️ Automatically selected columns for clustering: {selected_columns}")
+        if not numeric_cols:
+            st.error("The dataset does not contain any numeric columns. Please upload a dataset with numeric data.")
+            return
 
-            # If there are at least 2 columns, proceed to clustering
-            if len(selected_columns) >= 2:
-                # 2D or 3D visualization
-                view_type = st.radio("Select View", ["2D", "3D"])
+        # Handle missing or infinite values in numeric columns
+        df = df.replace([np.inf, -np.inf], np.nan).dropna()
 
-                # Set the number of clusters
-                num_clusters = st.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
+        if df.empty:
+            st.error("The dataset is empty after removing missing or invalid values. Please upload a valid dataset.")
+            return
 
-                # Choose clustering algorithm
-                clustering_algorithm = st.selectbox("Select Clustering Algorithm", ["KMeans", "DBSCAN", "Agglomerative"])
+        st.write(f"⚙️ Detected numeric columns: {numeric_cols}")
 
-                # Button to start clustering
-                if st.button("Perform Clustering"):
-                    try:
-                        # Data Preprocessing: Scaling the data
-                        scaler = StandardScaler()
-                        scaled_data = scaler.fit_transform(df[selected_columns])
+        # User selection of clustering columns
+        selected_columns = st.multiselect("Select columns for clustering:", numeric_cols, default=numeric_cols[:3])
 
-                        # Clustering based on selected algorithm
-                        if clustering_algorithm == "KMeans":
-                            kmeans = KMeans(n_clusters=num_clusters, random_state=42)
-                            clusters = kmeans.fit_predict(scaled_data)
-                        elif clustering_algorithm == "DBSCAN":
-                            from sklearn.cluster import DBSCAN
-                            dbscan = DBSCAN(eps=0.5, min_samples=5)
-                            clusters = dbscan.fit_predict(scaled_data)
-                        elif clustering_algorithm == "Agglomerative":
-                            from sklearn.cluster import AgglomerativeClustering
-                            agg = AgglomerativeClustering(n_clusters=num_clusters)
-                            clusters = agg.fit_predict(scaled_data)
+        if len(selected_columns) < 2:
+            st.error("Please select at least two columns for clustering.")
+            return
 
-                        # Add the 'Cluster' column to the dataframe
-                        df["Cluster"] = clusters
+        # Clustering options
+        num_clusters = st.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
+        clustering_algorithm = st.selectbox("Select Clustering Algorithm", ["KMeans", "DBSCAN", "Agglomerative"])
 
-                        # Show success message and preview the clustered data
-                        st.success(f"Clustering complete using {clustering_algorithm}!")
-                        st.write("🗂️ Clustered Data", df.head())
+        # Perform clustering
+        if st.button("Perform Clustering"):
+            try:
+                # Preprocess the data
+                scaler = StandardScaler()
+                scaled_data = scaler.fit_transform(df[selected_columns])
 
-                        # Calculate silhouette score (optional, if applicable)
-                        if clustering_algorithm == "KMeans":
-                            silhouette_avg = silhouette_score(scaled_data, clusters)
-                            st.write(f"Silhouette Score: {silhouette_avg:.2f}")
-                        
-                        # 2D Scatter Plot
-                        if view_type == "2D" and len(selected_columns) >= 2:
-                            fig = px.scatter(
-                                df,
-                                x=selected_columns[0],
-                                y=selected_columns[1],
-                                color="Cluster",  # Using 'Cluster' column for coloring
-                                color_discrete_sequence=px.colors.qualitative.Plotly,
-                                labels={selected_columns[0]: selected_columns[0], selected_columns[1]: selected_columns[1]}
-                            )
-                            fig.update_layout(title="Cluster Visualization (2D)")
-                            st.plotly_chart(fig, use_container_width=True)
+                # Apply clustering algorithm
+                if clustering_algorithm == "KMeans":
+                    model = KMeans(n_clusters=num_clusters, random_state=42)
+                    clusters = model.fit_predict(scaled_data)
+                elif clustering_algorithm == "DBSCAN":
+                    from sklearn.cluster import DBSCAN
+                    model = DBSCAN(eps=0.5, min_samples=5)
+                    clusters = model.fit_predict(scaled_data)
+                elif clustering_algorithm == "Agglomerative":
+                    from sklearn.cluster import AgglomerativeClustering
+                    model = AgglomerativeClustering(n_clusters=num_clusters)
+                    clusters = model.fit_predict(scaled_data)
 
-                        # 3D Scatter Plot
-                        elif view_type == "3D" and len(selected_columns) >= 3:
-                            fig = px.scatter_3d(
-                                df,
-                                x=selected_columns[0],
-                                y=selected_columns[1],
-                                z=selected_columns[2],
-                                color="Cluster",  # Using 'Cluster' column for coloring
-                                color_discrete_sequence=px.colors.qualitative.Plotly,
-                                labels={selected_columns[0]: selected_columns[0], selected_columns[1]: selected_columns[1], selected_columns[2]: selected_columns[2]}
-                            )
-                            fig.update_layout(title="Cluster Visualization (3D)")
-                            st.plotly_chart(fig, use_container_width=True)
+                # Add clusters to the DataFrame
+                df["Cluster"] = clusters
+                st.success(f"Clustering complete using {clustering_algorithm}!")
+                st.write("🗂️ Clustered Data", df.head())
 
-                        # Option to download the clustered data
-                        st.download_button(
-                            label="⬇️ Download Clustered Data",
-                            data=df.to_csv(index=False),
-                            file_name="clustered_data.csv",
-                            mime="text/csv"
-                        )
+                # Visualization
+                if len(selected_columns) == 2:
+                    fig = px.scatter(
+                        df,
+                        x=selected_columns[0],
+                        y=selected_columns[1],
+                        color="Cluster",
+                        title="Cluster Visualization (2D)",
+                        color_discrete_sequence=px.colors.qualitative.Plotly,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                elif len(selected_columns) >= 3:
+                    fig = px.scatter_3d(
+                        df,
+                        x=selected_columns[0],
+                        y=selected_columns[1],
+                        z=selected_columns[2],
+                        color="Cluster",
+                        title="Cluster Visualization (3D)",
+                        color_discrete_sequence=px.colors.qualitative.Plotly,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
-                    except Exception as e:
-                        st.error(f"Error during clustering: {e}")
-
-                else:
-                    st.info("Select the number of clusters and hit 'Perform Clustering' to begin.")
-
-            else:
-                st.error("Please select at least two columns for clustering.")
-        else:
-            st.warning("Clustering has already been performed. Please upload a new file to reset.")
+                # Download button for clustered data
+                st.download_button(
+                    label="⬇️ Download Clustered Data",
+                    data=df.to_csv(index=False),
+                    file_name="clustered_data.csv",
+                    mime="text/csv",
+                )
+            except Exception as e:
+                st.error(f"Error during clustering: {e}")
     else:
         st.warning("Please upload a CSV file to proceed.")
 
 def data_visualization_page():
-    st.markdown("<h1>Data Visualization</h1>", unsafe_allow_html=True)
-    st.header("📊 Visualize Data")
+    st.markdown("<h1>📊 Data Visualization</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload CSV File for Visualization", type="csv")
 
     if uploaded_file:  
@@ -592,8 +695,7 @@ def data_visualization_page():
                 st.error(f"An error occurred while creating the {chart_type}: {e}")
 
 def predictive_analytics_page():
-    st.markdown("<h1>Predictive Analytics</h1>", unsafe_allow_html=True)
-    st.header("📈 Predictive Analytics")
+    st.markdown("<h1> 📈 Predictive Analytics</h1>", unsafe_allow_html=True)
 
     # File Upload
     uploaded_file = st.file_uploader("Upload CSV File for Forecasting", type="csv")
@@ -688,8 +790,7 @@ def predictive_analytics_page():
         st.warning("Please upload a CSV file to proceed.")
 
 def gemini_ai():
-    st.markdown("<h1>Gemini AI</h1>", unsafe_allow_html=True)
-    st.title("Gemini AI Text Generation")
+    st.markdown("<h1> 🤖 Gemini AI</h1>", unsafe_allow_html=True)
     st.write("Generate text using Gemini AI.")
 
     # User input for the text generation prompt

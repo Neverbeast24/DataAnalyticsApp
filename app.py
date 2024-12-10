@@ -10,6 +10,7 @@ from werkzeug.exceptions import BadRequest
 from transformers import pipeline
 import uuid
 import google.generativeai as genai
+import os
 
 app = Flask(__name__)
 
@@ -30,16 +31,16 @@ def generate_text():
         if not prompt:
             return jsonify({"error": "No prompt provided"}), 400
 
+        # Initialize the GenerativeModel
+        model = genai.GenerativeModel(model_name='gemini-1.5-flash')  # Replace with your desired model name
+
         # Generate text using the Gemini API
-        model = genai.GenerativeModel(model="gemini-1.5-flash")  # Replace with your desired model
         response = model.generate_content(prompt)
 
         # Return the generated text
         return jsonify({"reply": response.text})
     except Exception as e:
-        logging.error(f"Error in /api/generate-text: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.before_request
 def log_request_info():
@@ -123,37 +124,47 @@ def process_data():
 @app.route('/ai/clustering', methods=['POST'])
 def ai_clustering():
     try:
+        # Parse request payload
         payload = request.json
         if not payload or 'data' not in payload:
             raise BadRequest("Payload must contain 'data' key.")
 
+        # Load data into DataFrame
         data = pd.DataFrame(payload['data'])
-        num_clusters = payload.get('num_clusters', 3)
 
-        # Validate numeric columns exist
-        numeric_data = data.select_dtypes(include=[np.number])
-        if numeric_data.empty:
+        # Validate and clean numeric columns
+        numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
+        if not numeric_cols:
             raise BadRequest("No numeric columns available for clustering.")
 
-        # Validate num_clusters
+        data = data.replace([np.inf, -np.inf], np.nan).dropna()
+
+        # Validate the number of clusters
+        num_clusters = payload.get('num_clusters', 3)
         if not isinstance(num_clusters, int) or num_clusters <= 0:
             raise BadRequest("'num_clusters' must be a positive integer.")
 
         if len(data) < num_clusters:
             raise BadRequest("'num_clusters' cannot exceed the number of data points.")
 
+        # Perform clustering
         scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(numeric_data)
+        scaled_data = scaler.fit_transform(data[numeric_cols])
 
         kmeans = KMeans(n_clusters=num_clusters, random_state=42)
         clusters = kmeans.fit_predict(scaled_data)
         data['Cluster'] = clusters
 
-        return jsonify({'clustered_data': data.to_dict(orient='records'), 'cluster_centers': kmeans.cluster_centers_.tolist()})
+        return jsonify({
+            'clustered_data': data.to_dict(orient='records'),
+            'cluster_centers': kmeans.cluster_centers_.tolist(),
+            'numeric_columns_used': numeric_cols,
+        })
     except Exception as e:
-        logging.error(f"Error in /ai/clustering: {str(e)}")
+        logging.error(f"Error in /ai/clustering: {e}")
         return jsonify({'error': str(e)}), 400
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    print("Server is running on http://127.0.0.1:5000")
+    app.run(debug=True, host='127.0.0.1', port=5000)

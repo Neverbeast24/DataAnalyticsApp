@@ -15,23 +15,24 @@ from prophet.plot import plot_plotly
 import warnings
 import requests
 
-# Initialize session state for messages
-if "messages" not in st.session_state:
-    st.session_state["messages"] = [] 
-    
 # predictive, data vizualization 
 warnings.filterwarnings("ignore")
 
+# Page Configuration
 st.set_page_config(
-    page_title="Datafluencers: InsightFlow",
+    page_title="InsightFlow Studio",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'About': "## InsightFlow Studio\nAI-Driven Analytics Platform"
+    }
 )
 
-# Function to convert the image to Base64
+# Function to convert an image to Base64
 def get_base64_image(file_path):
     with open(file_path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode()
+
 
 def recommend_chart(df):
     """
@@ -79,24 +80,98 @@ def recommend_chart(df):
 
     return recommendation, justification
 
-    
-# Convert your logo to Base64
-logo_base64 = get_base64_image("logo2.png")  # Replace with the correct path to your logo file
+# Replace with your logo path
+logo_base64 = get_base64_image("logo-new.png")
 
-base_url = "http://127.0.0.1:5000"
-    
-# Sidebar: Enlarged Logo and Title
-st.sidebar.markdown(
-    f"""
-    <div style="text-align: center;">
-        <img src="data:image/png;base64,{logo_base64}" alt="InsightFlow Logo" style="width: 150px; margin-bottom: 10px;">
-        <h1 style="margin: 0; font-size: 1.8rem;">InsightFlow</h1>
-    </div>
-    <p style="font-size: 0.9rem; color: #888; text-align: center;">A step-by-step guide to process and visualize your data.</p>
-    <hr style="border: none; border-top: 2px solid #eee; margin: 10px 0;">
-    """,
-    unsafe_allow_html=True
-)
+# Initialize Session State for Navigation
+if 'active_page' not in st.session_state:
+    st.session_state['active_page'] = 'Dashboard'
+
+# Function to Set the Active Page
+def set_page(page_name):
+    st.session_state['active_page'] = page_name
+
+def sidebar():
+    # Sidebar Logo
+    st.sidebar.image(f"data:image/png;base64,{logo_base64}", use_container_width=True)
+    st.sidebar.markdown("<p style='text-align: center; color: #00bfae; font-size: 1.2rem;'>AI-Driven Analytics Platform</p>", unsafe_allow_html=True)
+    st.sidebar.markdown("<hr style='border-top: 2px solid #00bfae;'>", unsafe_allow_html=True)
+
+    # Pages Dictionary and Progress Mapping
+    pages = {
+        "Dashboard": 0,
+        "Data Cleaning": 20,
+        "Clustering": 50,
+        "Data Visualization": 80,
+        "Predictive Analytics": 100, 
+        "Gemini AI": 100
+    }
+
+    st.markdown("""
+    <style>
+        .stButton>button {
+            background-color: #0E1117;
+            color: white;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 5px;
+            font-weight: normal; /* Default font weight */
+            border: 2px solid transparent; /* Default border */
+        }
+        .stButton>button:hover, .stButton>button.selected {
+            background-color: #00bfae;
+            color: #1b2a41;
+            font-weight: bold; /* Bold font on hover */
+            border: 2px solid transparent; /* Ensure no border appears on hover */
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Generate navigation buttons
+    for page_name in pages.keys():
+        # Add "selected" class if the button is for the current active page
+        button_class = "selected" if st.session_state['active_page'] == page_name else ""
+
+        # Create the button
+        if st.sidebar.button(page_name, key=page_name):
+            st.session_state['active_page'] = page_name  # Update the active page
+
+    progress = {
+    "Dashboard": 0,
+    "Data Cleaning": 20,
+    "Clustering": 50,
+    "Data Visualization": 80,
+    "Predictive Analytics": 100,
+    "Gemini AI": 100
+    }
+
+    st.sidebar.markdown(
+        f"""
+        <div style="margin-top: 20px;">
+            <label>Progress:</label>
+            <progress value="{progress.get(st.session_state['active_page'], 0)}" max="100" style="width: 100%;"></progress>
+            <span style="font-size: 0.8rem; color: #FFFFFF;">{progress.get(st.session_state['active_page'], 0)}% Complete</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+     # Add "About" section at the bottom
+    st.sidebar.markdown("<hr style='border-top: 2px solid #00bfae;'>", unsafe_allow_html=True)
+    st.sidebar.markdown(
+        """
+        <div style="text-align: center; font-size: 0.9rem; color: #e4e9f0;">
+            <strong>About InsightFlow Studio</strong><br>
+            InsightFlow Studio is an AI-driven analytics platform designed to streamline data preprocessing, clustering, visualization, and predictive analytics. Built for ease of use, scalability, and precision.
+            <br><br>
+            © 2024 InsightFlow Studio. All rights reserved.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 # Initialize session state
 if "uploaded_file" not in st.session_state:
@@ -107,95 +182,172 @@ if "cleaned_data" not in st.session_state:
 
 if "clustered_data" not in st.session_state:
     st.session_state["clustered_data"] = None
-# Ensure the new step is added to the sidebar
-st.sidebar.header("Navigation")
-step = st.sidebar.radio("Go to:", ["Home Dashboard", "Data Cleaning", "AI Clustering", "Data Visualization","Predictive Analytics", "Gemini AI Chatbot"])
-# Home Dashboard Page
-if step == "Home Dashboard":
-    st.title("📊 Welcome to InsightFlow!")
+    
+def style_page():
     st.markdown("""
-        <div style="text-align: center;">
-            <h2 style="color: #6c63ff;">Transform Your Data Into Insights!</h2>
-            <p style="font-size: 1.1rem; color: #888;">
-                InsightFlow combines AI-powered clustering, data cleaning, and visualization to simplify your data journey.
-            </p>
+    <style>
+        /* General body styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        /* Sidebar styling */
+        .css-1aumxhk {
+            background: linear-gradient(135deg, #0066ff, #00ccff);
+            color: #ffffff;
+        }
+        .css-1aumxhk .css-8c4qvf, .css-1aumxhk .css-nqowgj {
+            color: #ffffff;
+        }
+        .css-1aumxhk .css-8c4qvf:hover {
+            background-color: #0057e7 !important;
+            font-weight: bold;
+        }
+
+        /* Title and navigation buttons */
+        .title-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .title-container h1 {
+            color: #00ffcc;
+            font-size: 2.8rem;
+            font-weight: bold;
+            animation: fadeIn 2s;
+        }
+        .title-container p {
+            color: #66d9ff;
+            font-size: 1.3rem;
+            animation: fadeIn 2s ease-in-out;
+        }
+
+        /* Button container styling */
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .button-container button {
+            background: linear-gradient(to right, #0077ff, #00e6e6);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.3s, background 0.3s;
+        }
+        .button-container button:hover {
+            background: linear-gradient(to right, #00e6e6, #0077ff);
+            font-weight: bold;
+            transform: scale(1.1);
+        }
+
+        /* Cards styling */
+        .section-card {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+            animation: slideIn 1.5s;
+        }
+        .section-card h2 {
+            color: #00bfae;
+            text-align: center;
+        }
+        .section-card p {
+            color: #cccccc;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+    </style>
+    """, unsafe_allow_html=True)
+
+def dashboard_page():
+    style_page()
+
+    # Title Section with Animation
+    st.markdown("""
+        <div class="title-container">
+            <h1>📊 Visualize with InsightFlow!</h1>
+            <p>Transform your data into powerful insights with ease.</p>
         </div>
-        <hr style="border: none; border-top: 2px solid #eee; margin: 10px 0;">
+    """, unsafe_allow_html=True)
+
+    # Buttons for Navigation with Smooth Scrolling
+    st.markdown("""
+        <div class="button-container">
+            <button onclick="document.getElementById('trivia').scrollIntoView({ behavior: 'smooth' })"> Data Cleaning </button>
+            <button onclick="document.getElementById('interactive-charts').scrollIntoView({ behavior: 'smooth' })">Clustering </button>
+            <button onclick="document.getElementById('quote').scrollIntoView({ behavior: 'smooth' })"> Data Visualization</button>
+            <button onclick="document.getElementById('interactive-charts').scrollIntoView({ behavior: 'smooth' })">Predictive Analytics </button>
+            <button onclick="document.getElementById('quote').scrollIntoView({ behavior: 'smooth' })"> Gemini AI</button>
+        </div>
     """, unsafe_allow_html=True)
 
     # Trivia Section
-    st.subheader("📖 Did You Know?")
-    trivia = [
-        f"90% of the world's data has been created in the last two years.",
-        "The average person generates about 1.7 MB of data every second.",
-        "Data visualization can improve decision-making efficiency by up to 28%.",
-        "The first computer database was developed in 1960 by Charles Bachman."
-    ]
-    st.markdown(f"💡 **{np.random.choice(trivia)}**")
+    with st.container():
+        st.markdown('<div id="trivia" class="section-card"><h2>📖 Did You Know?</h2></div>', unsafe_allow_html=True)
+        trivia = [
+            "90% of the world's data has been created in the last two years.",
+            "The average person generates about 1.7 MB of data every second.",
+            "Data visualization can improve decision-making efficiency by up to 28%.",
+            "The first computer database was developed in 1960 by Charles Bachman."
+        ]
+        if st.button("🔄 Shuffle Trivia"):
+            selected_trivia = np.random.choice(trivia)
+        else:
+            selected_trivia = trivia[0]
+        st.info(f"💡 **{selected_trivia}**")
 
     # Interactive Chart Section
-    st.subheader("🌟 Explore Interactive Data")
-    sample_data = pd.DataFrame({
-        "Year": [2019, 2020, 2021, 2022],
-        "Revenue (in $M)": [50, 60, 70, 85],
-        "Profit (in $M)": [10, 15, 20, 25]
-    })
+    with st.container():
+        st.markdown('<div id="interactive-charts" class="section-card"><h2>📈 Explore Interactive Data</h2></div>', unsafe_allow_html=True)
+        sample_data = pd.DataFrame({
+            "Year": [2019, 2020, 2021, 2022],
+            "Revenue (in $M)": [50, 60, 70, 85],
+            "Profit (in $M)": [10, 15, 20, 25]
+        })
 
-    chart_type = st.radio("Choose a Chart Type:", ["Line Chart", "Bar Chart", "Area Chart"])
-    if chart_type == "Line Chart":
-        fig = px.line(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"])
-    elif chart_type == "Bar Chart":
-        fig = px.bar(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"], barmode="group")
-    elif chart_type == "Area Chart":
-        fig = px.area(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"])
+        chart_type = st.radio("Choose a Chart Type:", ["Line Chart", "Bar Chart", "Area Chart"], horizontal=True)
+        if chart_type == "Line Chart":
+            fig = px.line(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"], title="Line Chart - Revenue and Profit")
+        elif chart_type == "Bar Chart":
+            fig = px.bar(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"], barmode="group", title="Bar Chart - Revenue and Profit")
+        elif chart_type == "Area Chart":
+            fig = px.area(sample_data, x="Year", y=["Revenue (in $M)", "Profit (in $M)"], title="Area Chart - Revenue and Profit")
 
-    st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-    # Motivational Quote
-    st.markdown("""
-        <div style="text-align: center; margin-top: 20px;">
-            <h3 style="color: #6c63ff;">"Data is a precious thing and will last longer than the systems themselves." – Tim Berners-Lee</h3>
-        </div>
-    """, unsafe_allow_html=True)
+    # Motivational Quote Section
+    with st.container():
+        st.markdown('<div id="quote" class="section-card"><h2>💬 Motivational Quote</h2></div>', unsafe_allow_html=True)
+        motivational_quotes = [
+            "The goal is to turn data into information, and information into insight. – Carly Fiorina",
+            "Without big data analytics, companies are blind and deaf. – Geoffrey Moore",
+            "Data really powers everything we do. – Jeff Weiner",
+            "Information is the oil of the 21st century. – Peter Sondergaard"
+        ]
+        if st.button("🔄 Refresh Quote"):
+            selected_quote = np.random.choice(motivational_quotes)
+        else:
+            selected_quote = motivational_quotes[0]
 
-
-# Progress Indicator
-progress = {
-    "Data Cleaning": 20,
-    "AI Clustering": 50,
-    "Data Visualization": 100,
-}
-st.sidebar.markdown(
-    f"""
-    <div style="margin-top: 20px;">
-        <label>Progress:</label>
-        <progress value="{progress.get(step, 0)}" max="100" style="width: 100%;"></progress>
-        <span style="font-size: 0.8rem; color: #888;">{progress.get(step, 0)}% Complete</span>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown("""
-    <style>
-        .stSidebar {
-            background-color: #000000;
-        }
-        .stButton>button {
-            background-color: #6c63ff;
-            color: white;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-size: 14px;
-        }
-        .stButton>button:hover {
-            background-color: #4c44e1;
-        }
-        .stSelectbox select {
-            background-color: #f4f4f9;
-        }
-    </style>
-""", unsafe_allow_html=True)
+        st.success(f"💬 **{selected_quote}**")
 
 # Function to categorize columns as numerical or categorical
 def categorize_columns(df):
@@ -221,9 +373,8 @@ def select_all_callback():
 def deselect_all_callback():
     st.session_state["select_all"] = False
 
-    
-if step == "Data Cleaning":
-    st.header("🛠️ Process Data")
+def data_cleaning_page():
+    st.markdown("<h1>🛠️ Data Cleaning</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload CSV File for Processing", type="csv")
 
     if uploaded_file:
@@ -233,40 +384,25 @@ if step == "Data Cleaning":
 
         # Categorize columns into numerical and categorical
         numerical_cols, _ = categorize_columns(df)
-
-        st.subheader("Handle Missing Values")
-        fill_method = st.selectbox("Method for Filling Missing Values", ["Mean", "Median", "Mode", "Custom Value"])
-
-        if fill_method == "Custom Value":
-            fill_value = st.text_input("Enter a custom value to fill missing values")
-            df.fillna(fill_value, inplace=True)
-        elif fill_method == "Mean" and numerical_cols:
-            df[numerical_cols] = df[numerical_cols].fillna(df[numerical_cols].mean())
-        elif fill_method == "Median" and numerical_cols:
-            df[numerical_cols] = df[numerical_cols].fillna(df[numerical_cols].median())
-        elif fill_method == "Mode" and numerical_cols:
-            for col in numerical_cols:
-                df[col] = df[col].fillna(df[col].mode().iloc[0])
-
-        st.success("Missing values have been filled.")
         
-        # Option to see the cleaned data
-        st.dataframe(df)
-
         st.markdown("### Select Columns to Include in Cleaning")
         selected_columns = st.multiselect("Choose Columns:", df.columns, default=df.columns)
 
         # Cleaning Options
         st.markdown("### Choose Cleaning Operations")
+        remove_empty_rows = st.checkbox("Remove Empty Rows")
         remove_duplicates = st.checkbox("Remove Duplicate Rows")
         handle_missing_values = st.checkbox("Remove Rows with Missing Values")
         standardize_column_names = st.checkbox("Standardize Column Names")
         replace_infinite_values = st.checkbox("Replace Infinite Values with NaN")
         fill_missing_values = st.checkbox("Fill Missing Values with a Default Value")
-
+        
         # Additional options for missing values
         if fill_missing_values:
-            fill_value = st.text_input("Enter a default value to replace missing values:", value="0")
+            fill_method = st.selectbox("Choose a method to fill missing values:", ["Mean", "Median", "Mode", "Enter Default Value"])
+            fill_value = None
+            if fill_method == "Enter Default Value":
+                fill_value = st.text_input("Enter a default value to replace missing values:", value="0")
 
         # Clean Data Button Logic
         if st.button("✨ Clean Data"):
@@ -283,6 +419,22 @@ if step == "Data Cleaning":
                         cleaned_data = cleaned_data.drop_duplicates()
                         st.info("Duplicate rows removed.")
 
+                    if fill_missing_values:
+                        if fill_method == "Mean":
+                            cleaned_data = cleaned_data.fillna(cleaned_data.mean(numeric_only=True))
+                            st.info("Missing values filled with column mean.")
+                        elif fill_method == "Median":
+                            cleaned_data = cleaned_data.fillna(cleaned_data.median(numeric_only=True))
+                            st.info("Missing values filled with column median.")
+                        elif fill_method == "Mode":
+                            for column in cleaned_data.columns:
+                                mode_value = cleaned_data[column].mode().iloc[0] if not cleaned_data[column].mode().empty else None
+                                cleaned_data[column] = cleaned_data[column].fillna(mode_value)
+                            st.info("Missing values filled with column mode.")
+                        elif fill_method == "Enter Default Value" and fill_value is not None:
+                            cleaned_data = cleaned_data.fillna(value=fill_value)
+                            st.info(f"Missing values filled with: {fill_value}")
+                    
                     if handle_missing_values:
                         cleaned_data = cleaned_data.dropna()
                         st.info("Rows with missing values removed.")
@@ -294,10 +446,14 @@ if step == "Data Cleaning":
                     if replace_infinite_values:
                         cleaned_data.replace([np.inf, -np.inf], np.nan, inplace=True)
                         st.info("Infinite values replaced with NaN.")
-
+                    
+                    if remove_empty_rows:  # Handle empty row removal
+                        cleaned_data = cleaned_data.dropna(how='all')
+                        st.info("Empty rows removed.")
+                        
                     # Preview the cleaning operations
                     st.write("### Data Preview After Cleaning")
-                    st.dataframe(cleaned_data.head())
+                    st.dataframe(cleaned_data)
 
                     # Download button for cleaned data
                     st.download_button(
@@ -312,120 +468,109 @@ if step == "Data Cleaning":
 
     else:
         st.warning("Please upload a CSV file to proceed.")
-        
 
-# AI Clustering Section
-if step == "AI Clustering":
-    st.title("🤖 AI Clustering")
+def ai_clustering_page():
+    st.markdown("<h1>🛠️ Clustering</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload CSV for Clustering", type="csv")
 
     if uploaded_file:
         # Load the uploaded dataset
-        df = pd.read_csv(uploaded_file)
-        st.write("📋 Uploaded Data", df.head())
+        try:
+            df = pd.read_csv(uploaded_file)
+            st.write("📋 Uploaded Data", df.head())
+        except Exception as e:
+            st.error(f"Error reading the file: {e}")
+            return
 
-        # Check if the 'Cluster' column already exists (indicating clustering has been performed)
-        if 'Cluster' not in df.columns:
-            st.warning("Please run clustering first!")
+        # Detect numeric columns
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
-            # Automatically select numerical columns
-            selected_columns = select_automatic_columns(df, max_columns=3)
-            st.write(f"⚙️ Automatically selected columns for clustering: {selected_columns}")
+        if not numeric_cols:
+            st.error("The dataset does not contain any numeric columns. Please upload a dataset with numeric data.")
+            return
 
-            # If there are at least 2 columns, proceed to clustering
-            if len(selected_columns) >= 2:
-                # 2D or 3D visualization
-                view_type = st.radio("Select View", ["2D", "3D"])
+        # Handle missing or infinite values in numeric columns
+        df = df.replace([np.inf, -np.inf], np.nan).dropna()
 
-                # Set the number of clusters
-                num_clusters = st.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
+        if df.empty:
+            st.error("The dataset is empty after removing missing or invalid values. Please upload a valid dataset.")
+            return
 
-                # Choose clustering algorithm
-                clustering_algorithm = st.selectbox("Select Clustering Algorithm", ["KMeans", "DBSCAN", "Agglomerative"])
+        st.write(f"⚙️ Detected numeric columns: {numeric_cols}")
 
-                # Button to start clustering
-                if st.button("Perform Clustering"):
-                    try:
-                        # Data Preprocessing: Scaling the data
-                        scaler = StandardScaler()
-                        scaled_data = scaler.fit_transform(df[selected_columns])
+        # User selection of clustering columns
+        selected_columns = st.multiselect("Select columns for clustering:", numeric_cols, default=numeric_cols[:3])
 
-                        # Clustering based on selected algorithm
-                        if clustering_algorithm == "KMeans":
-                            kmeans = KMeans(n_clusters=num_clusters, random_state=42)
-                            clusters = kmeans.fit_predict(scaled_data)
-                        elif clustering_algorithm == "DBSCAN":
-                            from sklearn.cluster import DBSCAN
-                            dbscan = DBSCAN(eps=0.5, min_samples=5)
-                            clusters = dbscan.fit_predict(scaled_data)
-                        elif clustering_algorithm == "Agglomerative":
-                            from sklearn.cluster import AgglomerativeClustering
-                            agg = AgglomerativeClustering(n_clusters=num_clusters)
-                            clusters = agg.fit_predict(scaled_data)
+        if len(selected_columns) < 2:
+            st.error("Please select at least two columns for clustering.")
+            return
 
-                        # Add the 'Cluster' column to the dataframe
-                        df["Cluster"] = clusters
+        # Clustering options
+        num_clusters = st.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
+        clustering_algorithm = st.selectbox("Select Clustering Algorithm", ["KMeans", "DBSCAN", "Agglomerative"])
 
-                        # Show success message and preview the clustered data
-                        st.success(f"Clustering complete using {clustering_algorithm}!")
-                        st.write("🗂️ Clustered Data", df.head())
+        # Perform clustering
+        if st.button("Perform Clustering"):
+            try:
+                # Preprocess the data
+                scaler = StandardScaler()
+                scaled_data = scaler.fit_transform(df[selected_columns])
 
-                        # Calculate silhouette score (optional, if applicable)
-                        if clustering_algorithm == "KMeans":
-                            silhouette_avg = silhouette_score(scaled_data, clusters)
-                            st.write(f"Silhouette Score: {silhouette_avg:.2f}")
-                        
-                        # 2D Scatter Plot
-                        if view_type == "2D" and len(selected_columns) >= 2:
-                            fig = px.scatter(
-                                df,
-                                x=selected_columns[0],
-                                y=selected_columns[1],
-                                color="Cluster",  # Using 'Cluster' column for coloring
-                                color_discrete_sequence=px.colors.qualitative.Plotly,
-                                labels={selected_columns[0]: selected_columns[0], selected_columns[1]: selected_columns[1]}
-                            )
-                            fig.update_layout(title="Cluster Visualization (2D)")
-                            st.plotly_chart(fig, use_container_width=True)
+                # Apply clustering algorithm
+                if clustering_algorithm == "KMeans":
+                    model = KMeans(n_clusters=num_clusters, random_state=42)
+                    clusters = model.fit_predict(scaled_data)
+                elif clustering_algorithm == "DBSCAN":
+                    from sklearn.cluster import DBSCAN
+                    model = DBSCAN(eps=0.5, min_samples=5)
+                    clusters = model.fit_predict(scaled_data)
+                elif clustering_algorithm == "Agglomerative":
+                    from sklearn.cluster import AgglomerativeClustering
+                    model = AgglomerativeClustering(n_clusters=num_clusters)
+                    clusters = model.fit_predict(scaled_data)
 
-                        # 3D Scatter Plot
-                        elif view_type == "3D" and len(selected_columns) >= 3:
-                            fig = px.scatter_3d(
-                                df,
-                                x=selected_columns[0],
-                                y=selected_columns[1],
-                                z=selected_columns[2],
-                                color="Cluster",  # Using 'Cluster' column for coloring
-                                color_discrete_sequence=px.colors.qualitative.Plotly,
-                                labels={selected_columns[0]: selected_columns[0], selected_columns[1]: selected_columns[1], selected_columns[2]: selected_columns[2]}
-                            )
-                            fig.update_layout(title="Cluster Visualization (3D)")
-                            st.plotly_chart(fig, use_container_width=True)
+                # Add clusters to the DataFrame
+                df["Cluster"] = clusters
+                st.success(f"Clustering complete using {clustering_algorithm}!")
+                st.write("🗂️ Clustered Data", df.head())
 
-                        # Option to download the clustered data
-                        st.download_button(
-                            label="⬇️ Download Clustered Data",
-                            data=df.to_csv(index=False),
-                            file_name="clustered_data.csv",
-                            mime="text/csv"
-                        )
+                # Visualization
+                if len(selected_columns) == 2:
+                    fig = px.scatter(
+                        df,
+                        x=selected_columns[0],
+                        y=selected_columns[1],
+                        color="Cluster",
+                        title="Cluster Visualization (2D)",
+                        color_discrete_sequence=px.colors.qualitative.Plotly,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                elif len(selected_columns) >= 3:
+                    fig = px.scatter_3d(
+                        df,
+                        x=selected_columns[0],
+                        y=selected_columns[1],
+                        z=selected_columns[2],
+                        color="Cluster",
+                        title="Cluster Visualization (3D)",
+                        color_discrete_sequence=px.colors.qualitative.Plotly,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
-                    except Exception as e:
-                        st.error(f"Error during clustering: {e}")
-
-                else:
-                    st.info("Select the number of clusters and hit 'Perform Clustering' to begin.")
-
-            else:
-                st.error("Please select at least two columns for clustering.")
-        else:
-            st.warning("Clustering has already been performed. Please upload a new file to reset.")
+                # Download button for clustered data
+                st.download_button(
+                    label="⬇️ Download Clustered Data",
+                    data=df.to_csv(index=False),
+                    file_name="clustered_data.csv",
+                    mime="text/csv",
+                )
+            except Exception as e:
+                st.error(f"Error during clustering: {e}")
     else:
         st.warning("Please upload a CSV file to proceed.")
 
-# Step: Visualize Data
-elif step == "Data Visualization":
-    st.header("📊 Visualize Data")
+def data_visualization_page():
+    st.markdown("<h1>📊 Data Visualization</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload CSV File for Visualization", type="csv")
 
     if uploaded_file:  
@@ -566,8 +711,8 @@ elif step == "Data Visualization":
             except Exception as e:
                 st.error(f"An error occurred while creating the {chart_type}: {e}")
 
-if step == "Predictive Analytics":
-    st.header("📈 Predictive Analytics")
+def predictive_analytics_page():
+    st.markdown("<h1> 📈 Predictive Analytics</h1>", unsafe_allow_html=True)
 
     # File Upload
     uploaded_file = st.file_uploader("Upload CSV File for Forecasting", type="csv")
@@ -661,9 +806,8 @@ if step == "Predictive Analytics":
     else:
         st.warning("Please upload a CSV file to proceed.")
 
-# Streamlit front-end for the Gemini AI Text Generation
-if step == "Gemini AI Text Generation":
-    st.title("Gemini AI Text Generation")
+def gemini_ai():
+    st.markdown("<h1> 🤖 Gemini AI</h1>", unsafe_allow_html=True)
     st.write("Generate text using Gemini AI.")
 
     # User input for the text generation prompt
@@ -686,3 +830,50 @@ if step == "Gemini AI Text Generation":
                 st.error(f"Failed to connect to the backend. Error: {e}")
         else:
             st.warning("Please enter a prompt.")
+# Footer
+def footer():
+    st.markdown(
+        """
+        <div style="
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100vw;
+            height: 40px;
+            background-color: #1f2b38;
+            color: #e4e9f0;
+            text-align: center;
+            line-height: 40px;
+            font-size: 0.8rem;
+            z-index: 1000;
+        ">
+            © 2024 InsightFlow Studio. All rights reserved.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# Main Function
+def main():
+    # Sidebar
+    sidebar()
+
+    # Render the selected page
+    if st.session_state['active_page'] == "Dashboard":
+        dashboard_page()
+    elif st.session_state['active_page'] == "Data Cleaning":
+        data_cleaning_page()
+    elif st.session_state['active_page'] == "Clustering":
+        ai_clustering_page()
+    elif st.session_state['active_page'] == "Data Visualization":
+        data_visualization_page()
+    elif st.session_state['active_page'] == "Predictive Analytics":
+        predictive_analytics_page()
+    elif st.session_state['active_page'] == "Gemini AI":
+        gemini_ai()
+
+    # Footer
+    footer()
+
+if __name__ == "__main__":
+    main()
