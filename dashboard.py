@@ -254,40 +254,25 @@ def data_cleaning_page():
 
         # Categorize columns into numerical and categorical
         numerical_cols, _ = categorize_columns(df)
-
-        st.subheader("Handle Missing Values")
-        fill_method = st.selectbox("Method for Filling Missing Values", ["Mean", "Median", "Mode", "Custom Value"])
-
-        if fill_method == "Custom Value":
-            fill_value = st.text_input("Enter a custom value to fill missing values")
-            df.fillna(fill_value, inplace=True)
-        elif fill_method == "Mean" and numerical_cols:
-            df[numerical_cols] = df[numerical_cols].fillna(df[numerical_cols].mean())
-        elif fill_method == "Median" and numerical_cols:
-            df[numerical_cols] = df[numerical_cols].fillna(df[numerical_cols].median())
-        elif fill_method == "Mode" and numerical_cols:
-            for col in numerical_cols:
-                df[col] = df[col].fillna(df[col].mode().iloc[0])
-
-        st.success("Missing values have been filled.")
         
-        # Option to see the cleaned data
-        st.dataframe(df)
-
         st.markdown("### Select Columns to Include in Cleaning")
         selected_columns = st.multiselect("Choose Columns:", df.columns, default=df.columns)
 
         # Cleaning Options
         st.markdown("### Choose Cleaning Operations")
+        remove_empty_rows = st.checkbox("Remove Empty Rows")
         remove_duplicates = st.checkbox("Remove Duplicate Rows")
         handle_missing_values = st.checkbox("Remove Rows with Missing Values")
         standardize_column_names = st.checkbox("Standardize Column Names")
         replace_infinite_values = st.checkbox("Replace Infinite Values with NaN")
         fill_missing_values = st.checkbox("Fill Missing Values with a Default Value")
-
+        
         # Additional options for missing values
         if fill_missing_values:
-            fill_value = st.text_input("Enter a default value to replace missing values:", value="0")
+            fill_method = st.selectbox("Choose a method to fill missing values:", ["Mean", "Median", "Mode", "Enter Default Value"])
+            fill_value = None
+            if fill_method == "Enter Default Value":
+                fill_value = st.text_input("Enter a default value to replace missing values:", value="0")
 
         # Clean Data Button Logic
         if st.button("✨ Clean Data"):
@@ -304,6 +289,22 @@ def data_cleaning_page():
                         cleaned_data = cleaned_data.drop_duplicates()
                         st.info("Duplicate rows removed.")
 
+                    if fill_missing_values:
+                        if fill_method == "Mean":
+                            cleaned_data = cleaned_data.fillna(cleaned_data.mean(numeric_only=True))
+                            st.info("Missing values filled with column mean.")
+                        elif fill_method == "Median":
+                            cleaned_data = cleaned_data.fillna(cleaned_data.median(numeric_only=True))
+                            st.info("Missing values filled with column median.")
+                        elif fill_method == "Mode":
+                            for column in cleaned_data.columns:
+                                mode_value = cleaned_data[column].mode().iloc[0] if not cleaned_data[column].mode().empty else None
+                                cleaned_data[column] = cleaned_data[column].fillna(mode_value)
+                            st.info("Missing values filled with column mode.")
+                        elif fill_method == "Enter Default Value" and fill_value is not None:
+                            cleaned_data = cleaned_data.fillna(value=fill_value)
+                            st.info(f"Missing values filled with: {fill_value}")
+                    
                     if handle_missing_values:
                         cleaned_data = cleaned_data.dropna()
                         st.info("Rows with missing values removed.")
@@ -315,10 +316,14 @@ def data_cleaning_page():
                     if replace_infinite_values:
                         cleaned_data.replace([np.inf, -np.inf], np.nan, inplace=True)
                         st.info("Infinite values replaced with NaN.")
-
+                    
+                    if remove_empty_rows:  # Handle empty row removal
+                        cleaned_data = cleaned_data.dropna(how='all')
+                        st.info("Empty rows removed.")
+                        
                     # Preview the cleaning operations
                     st.write("### Data Preview After Cleaning")
-                    st.dataframe(cleaned_data.head())
+                    st.dataframe(cleaned_data)
 
                     # Download button for cleaned data
                     st.download_button(
